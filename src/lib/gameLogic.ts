@@ -21,7 +21,7 @@ export const LEVEL_ORDER = ['BEGINNER', 'BASIC', 'INTERMEDIATE', 'UPPER_INTERMED
 
 export type Problem = {
   id: string;
-  size?: number;
+  size: number;
   stoneCount: number;
   board: number[][];
 };
