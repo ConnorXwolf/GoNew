@@ -1,0 +1,5 @@
+{
+  "name": "GoMemo",
+  "description": "一個測試圍棋棋型記憶力的遊戲，包含多種難度與棋盤大小。",
+  "requestFramePermissions": []
+}
