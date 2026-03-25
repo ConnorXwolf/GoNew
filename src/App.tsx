@@ -219,6 +219,9 @@ function GameContent() {
   const [selectedTool, setSelectedTool] = useState<number>(1); // 1: black, 2: white, 0: eraser
   const [showErrors, setShowErrors] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [isPeeking, setIsPeeking] = useState(false);
+  const [peekTimeLeft, setPeekTimeLeft] = useState(0);
+  const [hasPeeked, setHasPeeked] = useState(false);
 
   // Stats & Achievements
   const [stats, setStats] = useState<UserStats>(DEFAULT_STATS);
@@ -324,6 +327,18 @@ function GameContent() {
     return () => clearInterval(timer);
   }, [gameState, timeLeft]);
 
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isPeeking && peekTimeLeft > 0) {
+      timer = setInterval(() => {
+        setPeekTimeLeft((prev) => prev - 1);
+      }, 1000);
+    } else if (isPeeking && peekTimeLeft === 0) {
+      setIsPeeking(false);
+    }
+    return () => clearInterval(timer);
+  }, [isPeeking, peekTimeLeft]);
+
   const checkAchievements = (newStats: UserStats, levelId: string) => {
     const newlyUnlocked: string[] = [];
     const checkAndUnlock = (id: string, condition: boolean) => {
@@ -373,6 +388,9 @@ function GameContent() {
     setAttemptsLeft(level.attempts);
     setShowErrors(false);
     setMessage(null);
+    setIsPeeking(false);
+    setPeekTimeLeft(0);
+    setHasPeeked(false);
   };
 
   const handleStartGame = (levelKey: string) => {
@@ -392,6 +410,13 @@ function GameContent() {
       const nextKey = LEVEL_ORDER[currentIndex + 1];
       handleStartGame(nextKey);
     }
+  };
+
+  const handlePeek = () => {
+    if (isPeeking || hasPeeked || (currentLevel && currentLevel.id === 'extreme')) return;
+    setIsPeeking(true);
+    setPeekTimeLeft(10);
+    setHasPeeked(true);
   };
 
   const handleSubmit = () => {
@@ -756,8 +781,8 @@ function GameContent() {
                 <div className="bg-stone-50 dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-inner">
                   <GoBoard
                     size={currentLevel.size}
-                    boardState={userBoard}
-                    interactive={true}
+                    boardState={isPeeking ? problemBoard : userBoard}
+                    interactive={!isPeeking}
                     onIntersectionClick={(x, y) => {
                       const newBoard = [...userBoard];
                       newBoard[y] = [...newBoard[y]];
@@ -766,6 +791,16 @@ function GameContent() {
                     }}
                   />
                 </div>
+
+                {isPeeking && (
+                  <div className="mt-4 flex flex-col items-center animate-pulse">
+                    <p className="text-amber-600 dark:text-amber-400 font-bold text-sm uppercase tracking-widest mb-1">{t.memorizePhase}</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-600 dark:text-amber-400 font-mono text-2xl font-black">{peekTimeLeft}</span>
+                      <span className="text-amber-600 dark:text-amber-400 text-xs font-bold">s</span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Toolbar */}
                 <div className="flex gap-4 mt-10 bg-stone-100 dark:bg-stone-800 p-2 rounded-2xl shadow-inner border border-stone-200 dark:border-stone-700">
@@ -801,12 +836,24 @@ function GameContent() {
                   </div>
                 )}
 
-                <Button
-                  onClick={handleSubmit}
-                  className="mt-10 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 px-12 py-7 rounded-full font-bold hover:bg-stone-800 dark:hover:bg-stone-200 transition-all shadow-md hover:shadow-lg w-full sm:w-auto text-xl"
-                >
-                  {t.submitAnswer}
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-4 mt-10 w-full sm:w-auto">
+                  {currentLevel.id !== 'extreme' && !hasPeeked && (
+                    <Button
+                      variant="outline"
+                      onClick={handlePeek}
+                      className="px-8 py-7 rounded-full font-bold border-stone-200 dark:border-stone-700 text-lg dark:text-stone-100 flex-1 sm:flex-none"
+                    >
+                      {t.peek}
+                    </Button>
+                  )}
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={isPeeking}
+                    className="bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 px-12 py-7 rounded-full font-bold hover:bg-stone-800 dark:hover:bg-stone-200 transition-all shadow-md hover:shadow-lg flex-1 sm:flex-none text-xl"
+                  >
+                    {t.submitAnswer}
+                  </Button>
+                </div>
               </div>
             )}
 
