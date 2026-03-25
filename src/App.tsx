@@ -5,7 +5,7 @@
 
 import * as React from 'react';
 import { useState, useEffect, useCallback, Component as ReactComponent } from 'react';
-import { AlertCircle, CheckCircle2, X, Trophy, TrendingUp, Award, ChevronRight, LogIn, LogOut, User as UserIcon, Info, Settings, Moon, Sun, Languages, Volume2, VolumeX } from 'lucide-react';
+import { AlertCircle, CheckCircle2, X, Trophy, TrendingUp, Award, ChevronRight, LogIn, LogOut, User as UserIcon, Info, Settings, Moon, Sun, Languages } from 'lucide-react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { doc, onSnapshot, updateDoc, increment } from 'firebase/firestore';
 import { toast, Toaster } from 'sonner';
@@ -226,11 +226,6 @@ function GameContent() {
   const [showStats, setShowStats] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Audio refs for preloading
-  const correctAudio = React.useRef<HTMLAudioElement | null>(null);
-  const incorrectAudio = React.useRef<HTMLAudioElement | null>(null);
-  const clickAudio = React.useRef<HTMLAudioElement | null>(null);
-
   // New state for i18n and theme
   const [lang, setLang] = useState<Language>(() => {
     const saved = localStorage.getItem('goMemoLang');
@@ -240,20 +235,12 @@ function GameContent() {
     const saved = localStorage.getItem('goMemoTheme');
     return (saved as 'light' | 'dark') || 'light';
   });
-  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
-    const saved = localStorage.getItem('goMemoSound');
-    return saved === null ? true : saved === 'true';
-  });
 
   const t = translations[lang];
 
   useEffect(() => {
     localStorage.setItem('goMemoLang', lang);
   }, [lang]);
-
-  useEffect(() => {
-    localStorage.setItem('goMemoSound', String(soundEnabled));
-  }, [soundEnabled]);
 
   useEffect(() => {
     localStorage.setItem('goMemoTheme', theme);
@@ -263,18 +250,6 @@ function GameContent() {
       document.documentElement.classList.remove('dark');
     }
   }, [theme]);
-
-  // Preload audio
-  useEffect(() => {
-    correctAudio.current = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-reward-952.mp3');
-    incorrectAudio.current = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3');
-    clickAudio.current = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-selection-click-1109.mp3');
-    
-    // Set volumes
-    if (correctAudio.current) correctAudio.current.volume = 0.4;
-    if (incorrectAudio.current) incorrectAudio.current.volume = 0.4;
-    if (clickAudio.current) clickAudio.current.volume = 0.4;
-  }, []);
 
   // Sync with Firestore
   useEffect(() => {
@@ -419,25 +394,6 @@ function GameContent() {
     }
   };
 
-  const playSound = useCallback((type: 'correct' | 'incorrect' | 'click') => {
-    if (!soundEnabled) return;
-    let audio: HTMLAudioElement | null = null;
-    if (type === 'correct') audio = correctAudio.current;
-    else if (type === 'incorrect') audio = incorrectAudio.current;
-    else if (type === 'click') audio = clickAudio.current;
-
-    if (audio) {
-      audio.currentTime = 0;
-      audio.play().catch(e => {
-        console.warn('Audio play failed:', e);
-        // If it's a user interaction issue, we might want to show a toast once
-        if (e.name === 'NotAllowedError') {
-          // Silent fail or toast
-        }
-      });
-    }
-  }, [soundEnabled]);
-
   const handleSubmit = () => {
     if (!currentLevel || !currentLevelKey) return;
 
@@ -453,7 +409,6 @@ function GameContent() {
     }
 
     if (isCorrect) {
-      playSound('correct');
       const newStreak = streak + 1;
       setStreak(newStreak);
       setScore(score + (newStreak >= 3 ? 5 : 1));
@@ -516,9 +471,7 @@ function GameContent() {
 
         setGameState('gameover');
         setShowErrors(true);
-        playSound('incorrect');
       } else {
-        playSound('incorrect');
         setMessage(`${t.wrongAnswer}！${t.remainingAttempts} ${newAttempts} ${t.times}`);
         setTimeout(() => setMessage(null), 3000);
       }
@@ -597,27 +550,6 @@ function GameContent() {
                     checked={theme === 'dark'} 
                     onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')} 
                   />
-                </div>
-                <DropdownMenuSeparator />
-                <div className="flex items-center justify-between px-2 py-2">
-                  <div className="flex items-center gap-2 text-sm font-medium text-stone-700 dark:text-stone-300">
-                    {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-                    {t.soundEffects}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-7 px-2 text-[10px] font-bold uppercase tracking-wider text-stone-400 hover:text-stone-600"
-                      onClick={() => playSound('click')}
-                    >
-                      Test
-                    </Button>
-                    <Switch 
-                      checked={soundEnabled} 
-                      onCheckedChange={setSoundEnabled} 
-                    />
-                  </div>
                 </div>
                 <DropdownMenuSeparator />
                 <div className="px-2 py-2 space-y-2">
@@ -827,7 +759,6 @@ function GameContent() {
                     boardState={userBoard}
                     interactive={true}
                     onIntersectionClick={(x, y) => {
-                      playSound('click');
                       const newBoard = [...userBoard];
                       newBoard[y] = [...newBoard[y]];
                       newBoard[y][x] = selectedTool;
