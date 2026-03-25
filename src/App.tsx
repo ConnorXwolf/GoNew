@@ -222,6 +222,7 @@ function GameContent() {
   const [isPeeking, setIsPeeking] = useState(false);
   const [peekTimeLeft, setPeekTimeLeft] = useState(0);
   const [hasPeeked, setHasPeeked] = useState(false);
+  const [lastProblemId, setLastProblemId] = useState<string | null>(null);
 
   // Stats & Achievements
   const [stats, setStats] = useState<UserStats>(DEFAULT_STATS);
@@ -380,8 +381,9 @@ function GameContent() {
   };
 
   const startProblem = (levelKey: string, level: Level, stoneCount: number) => {
-    const newProblem = generateProblem(levelKey, stoneCount);
+    const newProblem = generateProblem(levelKey, stoneCount, lastProblemId || undefined);
     setProblemBoard(newProblem.board);
+    setLastProblemId(newProblem.id);
     setUserBoard(Array(level.size).fill(null).map(() => Array(level.size).fill(0)));
     setGameState('memorize');
     setTimeLeft(30);

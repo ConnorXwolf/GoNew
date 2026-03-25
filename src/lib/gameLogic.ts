@@ -91,7 +91,7 @@ export const getAchievements = (lang: Language): Achievement[] => {
   return achievements;
 };
 
-export function generateProblem(levelKey: string, targetStones: number): Problem {
+export function generateProblem(levelKey: string, targetStones: number, excludeId?: string): Problem {
   const problems = GROUPED_PROBLEMS[levelKey];
   if (!problems || problems.length === 0) {
     // Fallback if something goes wrong
@@ -114,6 +114,14 @@ export function generateProblem(levelKey: string, targetStones: number): Problem
       closestProblems = [p];
     } else if (diff === minDiff) {
       closestProblems.push(p);
+    }
+  }
+  
+  // If we have multiple candidates and one matches the excludeId, try to pick another one
+  if (closestProblems.length > 1 && excludeId) {
+    const filtered = closestProblems.filter(p => p.id !== excludeId);
+    if (filtered.length > 0) {
+      return filtered[Math.floor(Math.random() * filtered.length)];
     }
   }
   
