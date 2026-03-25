@@ -419,7 +419,10 @@ function GameContent() {
     let isCorrect = true;
     for (let y = 0; y < currentLevel.size; y++) {
       for (let x = 0; x < currentLevel.size; x++) {
-        if (problemBoard[y][x] !== userBoard[y][x]) {
+        const pStone = problemBoard[y][x];
+        const uStone = userBoard[y][x];
+        const pColor = pStone === 0 ? 0 : (pStone % 2 === 1 ? 1 : 2);
+        if (pColor !== uStone) {
           isCorrect = false;
           break;
         }
@@ -747,7 +750,7 @@ function GameContent() {
                 <Progress value={(timeLeft / 30) * 100} className="w-full mb-6 sm:mb-8 h-1 sm:h-1.5 bg-stone-100 dark:bg-stone-800" />
                 
                 <div className="bg-stone-50 dark:bg-stone-800 p-2 sm:p-4 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-inner w-full flex justify-center">
-                  <GoBoard size={currentLevel.size} boardState={problemBoard} interactive={false} />
+                  <GoBoard size={currentLevel.size} boardState={problemBoard} interactive={false} showMoveNumbers={true} />
                 </div>
                 
                 <Button
@@ -781,6 +784,7 @@ function GameContent() {
                     size={currentLevel.size}
                     boardState={isPeeking ? problemBoard : userBoard}
                     interactive={!isPeeking}
+                    showMoveNumbers={isPeeking}
                     onIntersectionClick={(x, y) => {
                       const newBoard = [...userBoard];
                       newBoard[y] = [...newBoard[y]];
@@ -919,6 +923,7 @@ function GameContent() {
                     interactive={false}
                     showErrors={true}
                     problemBoard={problemBoard}
+                    showMoveNumbers={true}
                   />
                 </div>
 

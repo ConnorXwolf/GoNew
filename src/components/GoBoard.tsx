@@ -7,6 +7,7 @@ interface GoBoardProps {
   onIntersectionClick?: (x: number, y: number) => void;
   showErrors?: boolean;
   problemBoard?: number[][];
+  showMoveNumbers?: boolean;
 }
 
 export const GoBoard: React.FC<GoBoardProps> = ({
@@ -16,10 +17,13 @@ export const GoBoard: React.FC<GoBoardProps> = ({
   onIntersectionClick,
   showErrors = false,
   problemBoard,
+  showMoveNumbers = false,
 }) => {
   const cellSize = 10;
   const boardPixelSize = size * cellSize;
   const offset = cellSize / 2;
+  const hasSequence = boardState.some(row => row.some(s => s > 2));
+  const problemHasSequence = problemBoard?.some(row => row.some(s => s > 2));
 
   const starPoints = [];
   if (size === 9) {
@@ -59,7 +63,12 @@ export const GoBoard: React.FC<GoBoardProps> = ({
         {boardState.map((row, y) => 
           row.map((stone, x) => {
             if (stone === 0) return null;
-            const isError = showErrors && problemBoard && problemBoard[y][x] !== stone;
+            const pStone = problemBoard ? problemBoard[y][x] : 0;
+            const pColor = pStone === 0 ? 0 : (pStone % 2 === 1 ? 1 : 2);
+            const isError = showErrors && problemBoard && pColor !== stone;
+            const isBlack = stone % 2 === 1;
+            const showNumber = showMoveNumbers && stone > 0;
+            
             return (
               <g key={`stone-${x}-${y}`} className="transition-all duration-200">
                 <circle cx={x * cellSize + offset + 0.3} cy={y * cellSize + offset + 0.5} r={4.6} fill="rgba(0,0,0,0.4)" />
@@ -67,8 +76,23 @@ export const GoBoard: React.FC<GoBoardProps> = ({
                   cx={x * cellSize + offset} 
                   cy={y * cellSize + offset} 
                   r={4.8} 
-                  fill={stone === 1 ? 'url(#blackStone)' : 'url(#whiteStone)'} 
+                  fill={isBlack ? 'url(#blackStone)' : 'url(#whiteStone)'} 
                 />
+                {showNumber && (
+                  <text
+                    x={x * cellSize + offset}
+                    y={y * cellSize + offset}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fontSize="4"
+                    fontWeight="900"
+                    fill={isBlack ? '#FFFFFF' : '#000000'}
+                    className="pointer-events-none select-none"
+                    style={{ filter: isBlack ? 'drop-shadow(0px 0px 1px rgba(0,0,0,0.5))' : 'none' }}
+                  >
+                    {stone}
+                  </text>
+                )}
                 {isError && (
                   <circle cx={x * cellSize + offset} cy={y * cellSize + offset} r={1.5} fill="#ef4444" />
                 )}
@@ -80,17 +104,33 @@ export const GoBoard: React.FC<GoBoardProps> = ({
         {showErrors && problemBoard && problemBoard.map((row, y) => 
           row.map((stone, x) => {
             if (stone !== 0 && boardState[y][x] === 0) {
+              const isBlack = stone % 2 === 1;
               return (
-                <circle 
-                  key={`missing-${x}-${y}`}
-                  cx={x * cellSize + offset} 
-                  cy={y * cellSize + offset} 
-                  r={4.8} 
-                  fill={stone === 1 ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.3)'} 
-                  stroke="#ef4444"
-                  strokeWidth="0.8"
-                  strokeDasharray="1,1"
-                />
+                <g key={`missing-${x}-${y}`}>
+                  <circle 
+                    cx={x * cellSize + offset} 
+                    cy={y * cellSize + offset} 
+                    r={4.8} 
+                    fill={isBlack ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.3)'} 
+                    stroke="#ef4444"
+                    strokeWidth="0.8"
+                    strokeDasharray="1,1"
+                  />
+                  {showMoveNumbers && problemHasSequence && (
+                    <text
+                      x={x * cellSize + offset}
+                      y={y * cellSize + offset}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      fontSize="3.5"
+                      fontWeight="bold"
+                      fill={isBlack ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.5)'}
+                      className="pointer-events-none select-none"
+                    >
+                      {stone}
+                    </text>
+                  )}
+                </g>
               );
             }
             return null;
