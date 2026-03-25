@@ -351,20 +351,12 @@ function GameContent() {
 
     const plays = newStats.levelPlays[levelId] || 0;
     const corrects = newStats.levelCorrect[levelId] || 0;
-    const maxStreak = newStats.levelMaxStreak[levelId] || 0;
 
-    checkAndUnlock(`${levelId}_play_1`, plays >= 1);
-    checkAndUnlock(`${levelId}_play_10`, plays >= 10);
-    checkAndUnlock(`${levelId}_play_50`, plays >= 50);
-    checkAndUnlock(`${levelId}_play_100`, plays >= 100);
-
-    checkAndUnlock(`${levelId}_correct_1`, corrects >= 1);
-    checkAndUnlock(`${levelId}_correct_10`, corrects >= 10);
-    checkAndUnlock(`${levelId}_correct_50`, corrects >= 50);
-    checkAndUnlock(`${levelId}_correct_100`, corrects >= 100);
-
-    checkAndUnlock(`${levelId}_streak_3`, maxStreak >= 3);
-    checkAndUnlock(`${levelId}_streak_10`, maxStreak >= 10);
+    const milestones = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+    milestones.forEach(m => {
+      checkAndUnlock(`${levelId}_play_${m}`, plays >= m);
+      checkAndUnlock(`${levelId}_correct_${m}`, corrects >= m);
+    });
 
     if (newlyUnlocked.length > 0) {
       newlyUnlocked.forEach(id => {
@@ -438,7 +430,10 @@ function GameContent() {
     if (isCorrect) {
       const newStreak = streak + 1;
       setStreak(newStreak);
-      setScore(score + (newStreak >= 3 ? 5 : 1));
+      
+      // New Scoring: 5 points per correct, +15 for every 3 streak
+      const streakBonus = newStreak > 0 && newStreak % 3 === 0 ? 15 : 0;
+      setScore(score + 5 + streakBonus);
       
       // Update Stats
       let newStats = { ...stats };
@@ -866,8 +861,8 @@ function GameContent() {
                 </div>
                 <h2 className="text-4xl font-black mb-4 text-stone-900 dark:text-stone-100 tracking-tight">{t.correctAnswer}</h2>
                 <p className="text-stone-500 dark:text-stone-400 mb-10 text-lg max-w-xs">
-                  {streak >= 3 ? (
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">{t.streakBonus} 🔥</span>
+                  {streak > 0 && streak % 3 === 0 ? (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">{t.streakBonus}</span>
                   ) : (
                     t.goodMemory
                   )}

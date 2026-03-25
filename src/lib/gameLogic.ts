@@ -71,21 +71,29 @@ export const getAchievements = (lang: Language): Achievement[] => {
     { id: 'extreme', key: 'extreme', icon: '🥇' },
   ];
 
+  const milestones = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+  
   levelData.forEach(lvl => {
     const lvlName = translations[lang][lvl.key as keyof typeof translations['en']];
     const t = translations[lang];
-    achievements.push(
-      { id: `${lvl.id}_play_1`, name: `${t.start}${lvlName}`, description: `${t.correct} 1 ${lvlName}`, icon: lvl.icon },
-      { id: `${lvl.id}_play_10`, name: `${lvlName} Master`, description: `${t.correct} 10 ${lvlName}`, icon: lvl.icon },
-      { id: `${lvl.id}_play_50`, name: `${lvlName} Pro`, description: `${t.correct} 50 ${lvlName}`, icon: lvl.icon },
-      { id: `${lvl.id}_play_100`, name: `${lvlName} God`, description: `${t.correct} 100 ${lvlName}`, icon: lvl.icon },
-      { id: `${lvl.id}_correct_1`, name: `${lvlName} First Win`, description: `${t.correct} 1 ${lvlName}`, icon: lvl.icon },
-      { id: `${lvl.id}_correct_10`, name: `${lvlName} 10 Wins`, description: `${t.correct} 10 ${lvlName}`, icon: lvl.icon },
-      { id: `${lvl.id}_correct_50`, name: `${lvlName} 50 Wins`, description: `${t.correct} 50 ${lvlName}`, icon: lvl.icon },
-      { id: `${lvl.id}_correct_100`, name: `${lvlName} 100 Wins`, description: `${t.correct} 100 ${lvlName}`, icon: lvl.icon },
-      { id: `${lvl.id}_streak_3`, name: `${lvlName} Streak 3`, description: `${lvlName} ${t.streak} 3`, icon: lvl.icon },
-      { id: `${lvl.id}_streak_10`, name: `${lvlName} Streak 10`, description: `${lvlName} ${t.streak} 10`, icon: lvl.icon }
-    );
+    
+    milestones.forEach(m => {
+      // Played achievements
+      achievements.push({
+        id: `${lvl.id}_play_${m}`,
+        name: `${lvlName} ${t.totalPlayed} ${m}`,
+        description: `${t.totalPlayed} ${m} ${lvlName}`,
+        icon: lvl.icon
+      });
+      
+      // Correct achievements
+      achievements.push({
+        id: `${lvl.id}_correct_${m}`,
+        name: `${lvlName} ${t.totalCorrect} ${m}`,
+        description: `${t.totalCorrect} ${m} ${lvlName}`,
+        icon: lvl.icon
+      });
+    });
   });
 
   return achievements;
