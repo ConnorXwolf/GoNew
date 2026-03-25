@@ -22,8 +22,8 @@ export const GoBoard: React.FC<GoBoardProps> = ({
   const cellSize = 10;
   const boardPixelSize = size * cellSize;
   const offset = cellSize / 2;
-  const hasSequence = boardState.some(row => row.some(s => s > 2));
-  const problemHasSequence = problemBoard?.some(row => row.some(s => s > 2));
+  const hasSequence = boardState && Array.isArray(boardState) && boardState.some(row => row && Array.isArray(row) && row.some(s => s > 2));
+  const problemHasSequence = problemBoard && Array.isArray(problemBoard) && problemBoard.some(row => row && Array.isArray(row) && row.some(s => s > 2));
 
   const starPoints = [];
   if (size === 9) {
@@ -63,11 +63,11 @@ export const GoBoard: React.FC<GoBoardProps> = ({
         {boardState.map((row, y) => 
           row.map((stone, x) => {
             if (stone === 0) return null;
-            const pStone = problemBoard ? problemBoard[y][x] : 0;
-            const pColor = pStone === 0 ? 0 : (pStone % 2 === 1 ? 1 : 2);
-            const isError = showErrors && problemBoard && pColor !== stone;
-            const isBlack = stone % 2 === 1;
-            const showNumber = showMoveNumbers && stone > 0;
+            const pStone = (problemBoard && problemBoard[y]) ? problemBoard[y][x] : 0;
+            const pColor = pStone === 0 ? 0 : (pStone % 10);
+            const isError = showErrors && problemBoard && pColor !== (stone % 10);
+            const isBlack = (stone % 10) === 1;
+            const showNumber = showMoveNumbers && stone > 2;
             
             return (
               <g key={`stone-${x}-${y}`} className="transition-all duration-200">
@@ -90,7 +90,7 @@ export const GoBoard: React.FC<GoBoardProps> = ({
                     className="pointer-events-none select-none"
                     style={{ filter: isBlack ? 'drop-shadow(0px 0px 1px rgba(0,0,0,0.5))' : 'none' }}
                   >
-                    {stone}
+                    {Math.floor(stone / 10)}
                   </text>
                 )}
                 {isError && (
@@ -103,7 +103,7 @@ export const GoBoard: React.FC<GoBoardProps> = ({
 
         {showErrors && problemBoard && problemBoard.map((row, y) => 
           row.map((stone, x) => {
-            if (stone !== 0 && boardState[y][x] === 0) {
+            if (stone !== 0 && boardState[y] && boardState[y][x] === 0) {
               const isBlack = stone % 2 === 1;
               return (
                 <g key={`missing-${x}-${y}`}>

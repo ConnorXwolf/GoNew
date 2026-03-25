@@ -418,10 +418,14 @@ function GameContent() {
 
     let isCorrect = true;
     for (let y = 0; y < currentLevel.size; y++) {
+      if (!problemBoard[y] || !userBoard[y]) {
+        isCorrect = false;
+        break;
+      }
       for (let x = 0; x < currentLevel.size; x++) {
         const pStone = problemBoard[y][x];
         const uStone = userBoard[y][x];
-        const pColor = pStone === 0 ? 0 : (pStone % 2 === 1 ? 1 : 2);
+        const pColor = pStone === 0 ? 0 : (pStone % 10);
         if (pColor !== uStone) {
           isCorrect = false;
           break;
@@ -786,6 +790,7 @@ function GameContent() {
                     interactive={!isPeeking}
                     showMoveNumbers={isPeeking}
                     onIntersectionClick={(x, y) => {
+                      if (!userBoard[y]) return;
                       const newBoard = [...userBoard];
                       newBoard[y] = [...newBoard[y]];
                       newBoard[y][x] = selectedTool;

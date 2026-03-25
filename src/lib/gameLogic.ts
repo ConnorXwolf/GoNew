@@ -100,9 +100,21 @@ export const getAchievements = (lang: Language): Achievement[] => {
 };
 
 export function generateProblem(levelKey: string, targetStones: number, excludeId?: string): Problem {
-  const problems = GROUPED_PROBLEMS[levelKey];
+  const key = levelKey.toUpperCase();
+  let problems = GROUPED_PROBLEMS[key] || GROUPED_PROBLEMS[levelKey];
+  
+  // Fallback if the specific level key is missing (e.g., higher levels not in JSON)
   if (!problems || problems.length === 0) {
-    // Fallback if something goes wrong
+    const availableKeys = Object.keys(GROUPED_PROBLEMS);
+    if (availableKeys.length > 0) {
+      // Use INTERMEDIATE as a good default if available, otherwise the last one
+      const fallbackKey = availableKeys.includes('INTERMEDIATE') ? 'INTERMEDIATE' : availableKeys[availableKeys.length - 1];
+      problems = GROUPED_PROBLEMS[fallbackKey];
+    }
+  }
+
+  if (!problems || problems.length === 0) {
+    // Ultimate fallback if no problems at all
     return {
       id: 'fallback',
       size: 19,
@@ -126,13 +138,116 @@ export function generateProblem(levelKey: string, targetStones: number, excludeI
   }
   
   // If we have multiple candidates and one matches the excludeId, try to pick another one
+  let selectedProblem: Problem;
   if (closestProblems.length > 1 && excludeId) {
     const filtered = closestProblems.filter(p => p.id !== excludeId);
     if (filtered.length > 0) {
-      return filtered[Math.floor(Math.random() * filtered.length)];
+      selectedProblem = filtered[Math.floor(Math.random() * filtered.length)];
+    } else {
+      selectedProblem = closestProblems[Math.floor(Math.random() * closestProblems.length)];
+    }
+  } else {
+    selectedProblem = closestProblems[Math.floor(Math.random() * closestProblems.length)];
+  }
+
+  // Apply sequencing to the board
+  return applySequenceToProblem(selectedProblem);
+}
+
+function applySequenceToProblem(problem: Problem): Problem {
+  const { board } = problem;
+  if (!board || !Array.isArray(board)) return problem;
+  
+  const newBoard = board.map(row => row ? [...row] : []);
+  
+  const blackStones: { x: number, y: number }[] = [];
+  const whiteStones: { x: number, y: number }[] = [];
+  
+  for (let y = 0; y < board.length; y++) {
+    const row = board[y];
+    if (!row || !Array.isArray(row)) continue;
+    for (let x = 0; x < row.length; x++) {
+      if (row[x] === 1) blackStones.push({ x, y });
+      else if (row[x] === 2) whiteStones.push({ x, y });
     }
   }
+
+  const totalStones = blackStones.length + whiteStones.length;
+  if (totalStones === 0) return problem;
+
+  // Clear the board
+  for (let y = 0; y < newBoard.length; y++) {
+    for (let x = 0; x < newBoard[y].length; x++) {
+      newBoard[y][x] = 0;
+    }
+  }
+
+  // Find the top-left-most stone to start the logical sequence
+  const allOriginalStones = [...blackStones, ...whiteStones];
+  let currentX = 0;
+  let currentY = 0;
   
-  // Pick a random one from the closest matches
-  return closestProblems[Math.floor(Math.random() * closestProblems.length)];
+  if (allOriginalStones.length > 0) {
+    let startStone = allOriginalStones[0];
+    let minScore = startStone.x + startStone.y * 19;
+    for (const s of allOriginalStones) {
+      const score = s.x + s.y * 19;
+      if (score < minScore) {
+        minScore = score;
+        startStone = s;
+      }
+    }
+    currentX = startStone.x;
+    currentY = startStone.y;
+  }
+
+  const getDistance = (s: { x: number, y: number }, tx: number, ty: number) => {
+    return Math.sqrt(Math.pow(s.x - tx, 2) + Math.pow(s.y - ty, 2));
+  };
+
+  const findAndRemoveClosest = (list: { x: number, y: number }[], tx: number, ty: number) => {
+    if (list.length === 0) return null;
+    let closestIdx = 0;
+    let minD = getDistance(list[0], tx, ty);
+    for (let i = 1; i < list.length; i++) {
+      const d = getDistance(list[i], tx, ty);
+      if (d < minD) {
+        minD = d;
+        closestIdx = i;
+      }
+    }
+    return list.splice(closestIdx, 1)[0];
+  };
+
+  // Assign numbers while strictly alternating colors (Black odd, White even)
+  // and following proximity logic (Go logic)
+  for (let move = 1; move <= totalStones; move++) {
+    const isBlackMove = move % 2 === 1;
+    let targetStone;
+
+    // Try to pick the closest stone of the correct original color first
+    if (isBlackMove) {
+      targetStone = findAndRemoveClosest(blackStones, currentX, currentY);
+      if (!targetStone) {
+        targetStone = findAndRemoveClosest(whiteStones, currentX, currentY);
+      }
+    } else {
+      targetStone = findAndRemoveClosest(whiteStones, currentX, currentY);
+      if (!targetStone) {
+        targetStone = findAndRemoveClosest(blackStones, currentX, currentY);
+      }
+    }
+
+    if (targetStone) {
+      const assignedColor = isBlackMove ? 1 : 2;
+      newBoard[targetStone.y][targetStone.x] = assignedColor + move * 10;
+      currentX = targetStone.x;
+      currentY = targetStone.y;
+    }
+  }
+
+  return {
+    ...problem,
+    board: newBoard
+  };
 }
