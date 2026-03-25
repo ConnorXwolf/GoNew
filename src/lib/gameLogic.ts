@@ -1,20 +1,22 @@
 import problemsData from './groupedProblems.json';
 
+import { translations, Language } from './i18n';
+
 export type Level = {
   id: string;
-  name: string;
+  name: (lang: Language) => string;
   size: number;
   attempts: number;
   stones: [number, number];
 };
 
 export const LEVELS: Record<string, Level> = {
-  BEGINNER: { id: 'beginner', name: '初學', size: 19, attempts: 3, stones: [7, 16] },
-  BASIC: { id: 'basic', name: '基礎', size: 19, attempts: 3, stones: [17, 47] },
-  INTERMEDIATE: { id: 'intermediate', name: '中階', size: 19, attempts: 3, stones: [48, 55] },
-  UPPER_INTERMEDIATE: { id: 'upper_intermediate', name: '中高階', size: 19, attempts: 3, stones: [56, 62] },
-  ADVANCED: { id: 'advanced', name: '高階', size: 19, attempts: 3, stones: [63, 73] },
-  EXTREME: { id: 'extreme', name: '極限', size: 19, attempts: 1, stones: [74, 128] },
+  BEGINNER: { id: 'beginner', name: (lang) => translations[lang].beginner, size: 19, attempts: 3, stones: [7, 16] },
+  BASIC: { id: 'basic', name: (lang) => translations[lang].basic, size: 19, attempts: 3, stones: [17, 47] },
+  INTERMEDIATE: { id: 'intermediate', name: (lang) => translations[lang].intermediate, size: 19, attempts: 3, stones: [48, 55] },
+  UPPER_INTERMEDIATE: { id: 'upper_intermediate', name: (lang) => translations[lang].upper_intermediate, size: 19, attempts: 3, stones: [56, 62] },
+  ADVANCED: { id: 'advanced', name: (lang) => translations[lang].advanced, size: 19, attempts: 3, stones: [63, 73] },
+  EXTREME: { id: 'extreme', name: (lang) => translations[lang].extreme, size: 19, attempts: 1, stones: [74, 128] },
 };
 
 export const LEVEL_ORDER = ['BEGINNER', 'BASIC', 'INTERMEDIATE', 'UPPER_INTERMEDIATE', 'ADVANCED', 'EXTREME'];
@@ -58,34 +60,36 @@ export type Achievement = {
   icon: string;
 };
 
-export const ACHIEVEMENTS: Achievement[] = (() => {
+export const getAchievements = (lang: Language): Achievement[] => {
   const achievements: Achievement[] = [];
   const levelData = [
-    { id: 'beginner', name: '初學', icon: '🌱' },
-    { id: 'basic', name: '基礎', icon: '🪵' },
-    { id: 'intermediate', name: '中階', icon: '🪨' },
-    { id: 'upper_intermediate', name: '中高階', icon: '🥉' },
-    { id: 'advanced', name: '高階', icon: '🥈' },
-    { id: 'extreme', name: '極限', icon: '🥇' },
+    { id: 'beginner', key: 'beginner', icon: '🌱' },
+    { id: 'basic', key: 'basic', icon: '🪵' },
+    { id: 'intermediate', key: 'intermediate', icon: '🪨' },
+    { id: 'upper_intermediate', key: 'upper_intermediate', icon: '🥉' },
+    { id: 'advanced', key: 'advanced', icon: '🥈' },
+    { id: 'extreme', key: 'extreme', icon: '🥇' },
   ];
 
   levelData.forEach(lvl => {
+    const lvlName = translations[lang][lvl.key as keyof typeof translations['en']];
+    const t = translations[lang];
     achievements.push(
-      { id: `${lvl.id}_play_1`, name: `體驗${lvl.name}`, description: `完成 1 題${lvl.name}題目`, icon: lvl.icon },
-      { id: `${lvl.id}_play_10`, name: `${lvl.name}學徒`, description: `完成 10 題${lvl.name}題目`, icon: lvl.icon },
-      { id: `${lvl.id}_play_50`, name: `${lvl.name}熟手`, description: `完成 50 題${lvl.name}題目`, icon: lvl.icon },
-      { id: `${lvl.id}_play_100`, name: `${lvl.name}狂熱者`, description: `完成 100 題${lvl.name}題目`, icon: lvl.icon },
-      { id: `${lvl.id}_correct_1`, name: `${lvl.name}首勝`, description: `答對 1 題${lvl.name}題目`, icon: lvl.icon },
-      { id: `${lvl.id}_correct_10`, name: `${lvl.name}十勝`, description: `答對 10 題${lvl.name}題目`, icon: lvl.icon },
-      { id: `${lvl.id}_correct_50`, name: `${lvl.name}五十勝`, description: `答對 50 題${lvl.name}題目`, icon: lvl.icon },
-      { id: `${lvl.id}_correct_100`, name: `${lvl.name}百勝`, description: `答對 100 題${lvl.name}題目`, icon: lvl.icon },
-      { id: `${lvl.id}_streak_3`, name: `${lvl.name}連勝`, description: `在${lvl.name}連續答對 3 題`, icon: lvl.icon },
-      { id: `${lvl.id}_streak_10`, name: `${lvl.name}主宰`, description: `在${lvl.name}連續答對 10 題`, icon: lvl.icon }
+      { id: `${lvl.id}_play_1`, name: `${t.start}${lvlName}`, description: `${t.correct} 1 ${lvlName}`, icon: lvl.icon },
+      { id: `${lvl.id}_play_10`, name: `${lvlName} Master`, description: `${t.correct} 10 ${lvlName}`, icon: lvl.icon },
+      { id: `${lvl.id}_play_50`, name: `${lvlName} Pro`, description: `${t.correct} 50 ${lvlName}`, icon: lvl.icon },
+      { id: `${lvl.id}_play_100`, name: `${lvlName} God`, description: `${t.correct} 100 ${lvlName}`, icon: lvl.icon },
+      { id: `${lvl.id}_correct_1`, name: `${lvlName} First Win`, description: `${t.correct} 1 ${lvlName}`, icon: lvl.icon },
+      { id: `${lvl.id}_correct_10`, name: `${lvlName} 10 Wins`, description: `${t.correct} 10 ${lvlName}`, icon: lvl.icon },
+      { id: `${lvl.id}_correct_50`, name: `${lvlName} 50 Wins`, description: `${t.correct} 50 ${lvlName}`, icon: lvl.icon },
+      { id: `${lvl.id}_correct_100`, name: `${lvlName} 100 Wins`, description: `${t.correct} 100 ${lvlName}`, icon: lvl.icon },
+      { id: `${lvl.id}_streak_3`, name: `${lvlName} Streak 3`, description: `${lvlName} ${t.streak} 3`, icon: lvl.icon },
+      { id: `${lvl.id}_streak_10`, name: `${lvlName} Streak 10`, description: `${lvlName} ${t.streak} 10`, icon: lvl.icon }
     );
   });
 
   return achievements;
-})();
+};
 
 export function generateProblem(levelKey: string, targetStones: number): Problem {
   const problems = GROUPED_PROBLEMS[levelKey];
