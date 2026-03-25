@@ -17,13 +17,19 @@
         "stats": {
           "type": "object",
           "properties": {
-            "totalSolved": { "type": "integer", "description": "Total number of problems solved" },
-            "streak": { "type": "integer", "description": "Current daily streak" },
+            "totalPlayed": { "type": "integer", "description": "Total number of games played" },
+            "totalCorrect": { "type": "integer", "description": "Total number of correct answers" },
+            "maxStreak": { "type": "integer", "description": "Highest streak achieved" },
             "lastSolvedDate": { "type": "string", "format": "date-time", "description": "Last time the user solved a problem" }
           }
+        },
+        "achievements": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of achievement IDs unlocked by the user"
         }
       },
-      "required": ["uid", "email"]
+      "required": ["uid", "email", "solvedProblems", "stats", "achievements"]
     }
   },
   "firestore": {

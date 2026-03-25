@@ -13,7 +13,8 @@ service cloud.firestore {
     //   - displayName: string (optional) - User's name
     //   - photoURL: string (optional) - User's avatar
     //   - solvedProblems: list (required) - Array of problem IDs
-    //   - stats: map (required) - User stats (totalSolved, streak, etc.)
+    //   - stats: map (required) - User stats (totalPlayed, totalCorrect, maxStreak, lastSolvedDate)
+    //   - achievements: list (required) - Array of achievement IDs
     //
     // ===============================================================
 
@@ -29,15 +30,17 @@ service cloud.firestore {
     }
 
     function isValidUser(data) {
-      return data.keys().hasAll(['uid', 'email', 'solvedProblems', 'stats']) &&
+      return data.keys().hasAll(['uid', 'email', 'solvedProblems', 'stats', 'achievements']) &&
              data.uid is string &&
              data.email is string &&
              data.solvedProblems is list &&
              data.stats is map &&
-             data.stats.keys().hasAll(['totalSolved', 'streak', 'lastSolvedDate']) &&
-             data.stats.totalSolved is int &&
-             data.stats.streak is int &&
-             data.stats.lastSolvedDate is string;
+             data.stats.keys().hasAll(['totalPlayed', 'totalCorrect', 'maxStreak', 'lastSolvedDate']) &&
+             data.stats.totalPlayed is int &&
+             data.stats.totalCorrect is int &&
+             data.stats.maxStreak is int &&
+             data.stats.lastSolvedDate is string &&
+             data.achievements is list;
     }
 
     function isAdmin() {

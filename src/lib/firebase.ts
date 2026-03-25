@@ -1,5 +1,13 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { 
+  getAuth, 
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  signOut,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile
+} from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion, onSnapshot, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -76,30 +84,58 @@ testConnection();
 export const loginWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
-    const user = result.user;
-    
-    // Initialize user document if it doesn't exist
-    const userRef = doc(db, 'users', user.uid);
+    return await handleUserDoc(result.user);
+  } catch (error) {
+    console.error("Google Login Error:", error);
+    throw error;
+  }
+};
+
+export const registerWithEmail = async (email: string, pass: string, name: string) => {
+  try {
+    const result = await createUserWithEmailAndPassword(auth, email, pass);
+    await updateProfile(result.user, { displayName: name });
+    return await handleUserDoc(result.user, name);
+  } catch (error) {
+    console.error("Registration Error:", error);
+    throw error;
+  }
+};
+
+export const loginWithEmail = async (email: string, pass: string) => {
+  try {
+    const result = await signInWithEmailAndPassword(auth, email, pass);
+    return await handleUserDoc(result.user);
+  } catch (error) {
+    console.error("Email Login Error:", error);
+    throw error;
+  }
+};
+
+const handleUserDoc = async (user: any, name?: string) => {
+  const userRef = doc(db, 'users', user.uid);
+  try {
     const userDoc = await getDoc(userRef);
     
     if (!userDoc.exists()) {
       await setDoc(userRef, {
         uid: user.uid,
         email: user.email,
-        displayName: user.displayName,
-        photoURL: user.photoURL,
+        displayName: name || user.displayName || '圍棋愛好者',
+        photoURL: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`,
         solvedProblems: [],
         stats: {
-          totalSolved: 0,
-          streak: 0,
+          totalPlayed: 0,
+          totalCorrect: 0,
+          maxStreak: 0,
           lastSolvedDate: new Date().toISOString()
-        }
+        },
+        achievements: []
       });
     }
     return user;
   } catch (error) {
-    console.error("Login Error:", error);
-    throw error;
+    handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}`);
   }
 };
 
