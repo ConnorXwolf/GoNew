@@ -504,109 +504,110 @@ function GameContent() {
   const hasNextLevel = currentLevelKey && LEVEL_ORDER.indexOf(currentLevelKey) < LEVEL_ORDER.length - 1;
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-800 dark:text-stone-200 font-sans flex flex-col items-center py-8 px-4 relative overflow-x-hidden">
+    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-800 dark:text-stone-200 font-sans flex flex-col items-center py-4 sm:py-8 px-2 sm:px-4 relative overflow-x-hidden">
       <div className="w-full max-w-2xl">
         {/* Header */}
-        <header className="flex flex-col sm:flex-row justify-between items-center mb-8 bg-white dark:bg-stone-900 p-4 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 gap-4">
-          <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-stone-800 to-stone-600 shadow-sm border border-stone-900"></div>
+        <header className="flex flex-col sm:flex-row justify-between items-center mb-6 sm:mb-8 bg-white dark:bg-stone-900 p-3 sm:p-4 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 gap-3 sm:gap-4">
+          <div className="flex items-center justify-between w-full sm:w-auto gap-2 sm:gap-4">
+            <h1 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+              <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-br from-stone-800 to-stone-600 shadow-sm border border-stone-900"></div>
               GoMemo
-              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-white to-stone-200 shadow-sm border border-stone-300"></div>
+              <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-br from-white to-stone-200 shadow-sm border border-stone-300"></div>
             </h1>
             
-            {/* Auth Section */}
-            <div className="flex items-center gap-2 border-l pl-4 border-stone-200 dark:border-stone-800">
-              {loading ? (
-                <Skeleton className="w-8 h-8 rounded-full" />
-              ) : user ? (
-                <div className="flex items-center gap-2 group relative">
-                  <Avatar className="w-8 h-8 border border-stone-200 dark:border-stone-800 shadow-sm">
-                    <AvatarImage src={user.photoURL || undefined} referrerPolicy="no-referrer" />
-                    <AvatarFallback className="bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400">
-                      {user.displayName?.charAt(0) || <UserIcon className="w-4 h-4" />}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="hidden sm:flex flex-col items-start leading-none">
-                    <span className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate max-w-[100px]">
-                      {user.displayName || t.goEnthusiast}
-                    </span>
-                    <span className="text-[10px] text-stone-500">{t.loggedIn}</span>
+            <div className="flex items-center gap-2">
+              {/* Auth Section */}
+              <div className="flex items-center gap-2 border-l pl-2 sm:pl-4 border-stone-200 dark:border-stone-800">
+                {loading ? (
+                  <Skeleton className="w-8 h-8 rounded-full" />
+                ) : user ? (
+                  <div className="flex items-center gap-1 sm:gap-2 group relative">
+                    <Avatar className="w-7 h-7 sm:w-8 sm:h-8 border border-stone-200 dark:border-stone-800 shadow-sm">
+                      <AvatarImage src={user.photoURL || undefined} referrerPolicy="no-referrer" />
+                      <AvatarFallback className="bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 text-[10px] sm:text-xs">
+                        {user.displayName?.charAt(0) || <UserIcon className="w-3 h-3 sm:w-4 sm:h-4" />}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="hidden md:flex flex-col items-start leading-none">
+                      <span className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate max-w-[80px]">
+                        {user.displayName || t.goEnthusiast}
+                      </span>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-full text-stone-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      onClick={() => {
+                        logout();
+                        toast.info(t.loggedOut);
+                      }}
+                    >
+                      <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    </Button>
                   </div>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="w-8 h-8 rounded-full text-stone-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-                    onClick={() => {
-                      logout();
-                      toast.info(t.loggedOut);
-                    }}
-                  >
-                    <LogOut className="w-4 h-4" />
-                  </Button>
-                </div>
-              ) : (
-                <AuthModal lang={lang} />
-              )}
-            </div>
+                ) : (
+                  <AuthModal lang={lang} />
+                )}
+              </div>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full text-stone-400 hover:text-stone-600 dark:hover:text-stone-300">
-                    <Settings className="w-4 h-4" />
-                  </Button>
-                }
-              />
-              <DropdownMenuContent align="end" className="w-56">
-                <div className="px-2 py-1.5 text-xs font-bold text-stone-400 uppercase tracking-widest">
-                  {t.settings}
-                </div>
-                <DropdownMenuSeparator />
-                <div className="flex items-center justify-between px-2 py-2">
-                  <div className="flex items-center gap-2 text-sm font-medium text-stone-700 dark:text-stone-300">
-                    {theme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-                    {t.darkMode}
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button variant="ghost" size="icon" className="w-7 h-7 sm:w-8 sm:h-8 rounded-full text-stone-400 hover:text-stone-600 dark:hover:text-stone-300">
+                      <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    </Button>
+                  }
+                />
+                <DropdownMenuContent align="end" className="w-56">
+                  <div className="px-2 py-1.5 text-xs font-bold text-stone-400 uppercase tracking-widest">
+                    {t.settings}
                   </div>
-                  <Switch 
-                    checked={theme === 'dark'} 
-                    onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')} 
-                  />
-                </div>
-                <DropdownMenuSeparator />
-                <div className="px-2 py-2 space-y-2">
-                  <div className="flex items-center gap-2 text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-                    <Languages className="w-4 h-4" />
-                    {t.language}
+                  <DropdownMenuSeparator />
+                  <div className="flex items-center justify-between px-2 py-2">
+                    <div className="flex items-center gap-2 text-sm font-medium text-stone-700 dark:text-stone-300">
+                      {theme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                      {t.darkMode}
+                    </div>
+                    <Switch 
+                      checked={theme === 'dark'} 
+                      onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')} 
+                    />
                   </div>
-                  <Select value={lang} onValueChange={(v: Language) => setLang(v)}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="zh">繁體中文</SelectItem>
-                      <SelectItem value="en">English</SelectItem>
-                      <SelectItem value="ja">日本語</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <DropdownMenuSeparator />
+                  <div className="px-2 py-2 space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
+                      <Languages className="w-4 h-4" />
+                      {t.language}
+                    </div>
+                    <Select value={lang} onValueChange={(v: Language) => setLang(v)}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="zh">繁體中文</SelectItem>
+                        <SelectItem value="en">English</SelectItem>
+                        <SelectItem value="ja">日本語</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
 
           {gameState !== 'menu' && (
-            <div className="flex gap-3 text-sm font-medium items-center">
-              <Badge variant="outline" className="bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 px-3 py-1">
+            <div className="flex gap-2 sm:gap-3 text-[10px] sm:text-sm font-medium items-center w-full sm:w-auto justify-center sm:justify-end border-t sm:border-t-0 pt-2 sm:pt-0 border-stone-100 dark:border-stone-800">
+              <Badge variant="outline" className="bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 px-2 sm:px-3 py-0.5 sm:py-1">
                 {t.score}: <span className="text-emerald-600 font-bold ml-1">{score}</span>
               </Badge>
-              <Badge variant="outline" className="bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 px-3 py-1">
+              <Badge variant="outline" className="bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 px-2 sm:px-3 py-0.5 sm:py-1">
                 {t.streak}: <span className="text-amber-600 font-bold ml-1">{streak}</span>
               </Badge>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setGameState('menu')}
-                className="text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 h-8"
+                className="text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 h-7 sm:h-8 text-[10px] sm:text-xs"
               >
                 {t.exit}
               </Button>
@@ -615,8 +616,8 @@ function GameContent() {
         </header>
 
         {/* Main Content */}
-        <Card className="border-none shadow-sm overflow-hidden bg-white dark:bg-stone-900 min-h-[550px] flex flex-col items-center justify-center relative">
-          <CardContent className="w-full p-6 sm:p-10 flex flex-col items-center">
+        <Card className="border-none shadow-sm overflow-hidden bg-white dark:bg-stone-900 min-h-[500px] flex flex-col items-center justify-center relative">
+          <CardContent className="w-full p-4 sm:p-10 flex flex-col items-center">
             {gameState === 'menu' && (
               <div className="flex flex-col items-center w-full">
                 {showStats ? (
@@ -630,33 +631,33 @@ function GameContent() {
                       </Button>
                     </div>
                     
-                    <div className="grid grid-cols-3 gap-4 mb-8">
-                      <Card className="bg-stone-50 dark:bg-stone-800 border-none shadow-none text-center p-4">
-                        <p className="text-stone-500 dark:text-stone-400 text-xs font-bold mb-1 uppercase tracking-wider">{t.totalPlayed}</p>
-                        <p className="text-2xl font-black text-stone-800 dark:text-stone-100">{stats.totalPlayed}</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 mb-8">
+                      <Card className="bg-stone-50 dark:bg-stone-800 border-none shadow-none text-center p-3 sm:p-4">
+                        <p className="text-stone-500 dark:text-stone-400 text-[10px] sm:text-xs font-bold mb-1 uppercase tracking-wider">{t.totalPlayed}</p>
+                        <p className="text-xl sm:text-2xl font-black text-stone-800 dark:text-stone-100">{stats.totalPlayed}</p>
                       </Card>
-                      <Card className="bg-stone-50 dark:bg-stone-800 border-none shadow-none text-center p-4">
-                        <p className="text-stone-500 dark:text-stone-400 text-xs font-bold mb-1 uppercase tracking-wider">{t.totalCorrect}</p>
-                        <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{stats.totalCorrect}</p>
+                      <Card className="bg-stone-50 dark:bg-stone-800 border-none shadow-none text-center p-3 sm:p-4">
+                        <p className="text-stone-500 dark:text-stone-400 text-[10px] sm:text-xs font-bold mb-1 uppercase tracking-wider">{t.totalCorrect}</p>
+                        <p className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400">{stats.totalCorrect}</p>
                       </Card>
-                      <Card className="bg-stone-50 dark:bg-stone-800 border-none shadow-none text-center p-4">
-                        <p className="text-stone-500 dark:text-stone-400 text-xs font-bold mb-1 uppercase tracking-wider">{t.maxStreak}</p>
-                        <p className="text-2xl font-black text-amber-600 dark:text-amber-400">{stats.maxStreak}</p>
+                      <Card className="bg-stone-50 dark:bg-stone-800 border-none shadow-none text-center p-3 sm:p-4 col-span-2 sm:col-span-1">
+                        <p className="text-stone-500 dark:text-stone-400 text-[10px] sm:text-xs font-bold mb-1 uppercase tracking-wider">{t.maxStreak}</p>
+                        <p className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400">{stats.maxStreak}</p>
                       </Card>
                     </div>
 
                     <h3 className="text-lg font-bold text-stone-700 dark:text-stone-200 mb-4 flex items-center gap-2">
                       <Award className="text-indigo-500" /> {t.achievements}
                     </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 sm:gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                       {getAchievements(lang).map(ach => {
                         const isUnlocked = stats.achievements.includes(ach.id);
                         return (
-                          <div key={ach.id} className={`p-3 rounded-xl border flex items-center gap-3 transition-all ${isUnlocked ? 'bg-white border-amber-200 shadow-sm' : 'bg-stone-50 border-stone-100 opacity-60 grayscale'}`}>
-                            <div className="text-3xl">{ach.icon}</div>
-                            <div>
-                              <div className={`font-bold text-sm ${isUnlocked ? 'text-stone-800' : 'text-stone-500'}`}>{ach.name}</div>
-                              <div className="text-[10px] text-stone-500 leading-tight">{ach.description}</div>
+                          <div key={ach.id} className={`p-2 sm:p-3 rounded-xl border flex items-center gap-2 sm:gap-3 transition-all ${isUnlocked ? 'bg-white border-amber-200 shadow-sm' : 'bg-stone-50 border-stone-100 opacity-60 grayscale'}`}>
+                            <div className="text-2xl sm:text-3xl">{ach.icon}</div>
+                            <div className="min-w-0">
+                              <div className={`font-bold text-[10px] sm:text-sm truncate ${isUnlocked ? 'text-stone-800' : 'text-stone-500'}`}>{ach.name}</div>
+                              <div className="text-[8px] sm:text-[10px] text-stone-500 leading-tight truncate">{ach.description}</div>
                             </div>
                           </div>
                         );
@@ -678,7 +679,7 @@ function GameContent() {
                         <TrendingUp className="w-4 h-4 mr-2" /> {t.learningRecord}
                       </Button>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 w-full">
                       {LEVEL_ORDER.map((key) => {
                         const level = LEVELS[key];
                         return (
@@ -686,12 +687,12 @@ function GameContent() {
                             key={level.id}
                             variant="outline"
                             onClick={() => handleStartGame(key)}
-                            className="h-auto p-6 border-2 border-stone-100 dark:border-stone-800 rounded-2xl hover:border-emerald-500 dark:hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all flex flex-col items-center group relative overflow-hidden"
+                            className="h-auto p-4 sm:p-6 border-2 border-stone-100 dark:border-stone-800 rounded-2xl hover:border-emerald-500 dark:hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all flex flex-col items-center group relative overflow-hidden"
                           >
-                            <span className="text-xl font-bold text-stone-800 dark:text-stone-100 group-hover:text-emerald-700 dark:group-hover:text-emerald-300">
+                            <span className="text-lg sm:text-xl font-bold text-stone-800 dark:text-stone-100 group-hover:text-emerald-700 dark:group-hover:text-emerald-300">
                               {level.name(lang)}
                             </span>
-                            <span className="text-xs text-stone-400 dark:text-stone-500 mt-2 font-medium uppercase tracking-widest">
+                            <span className="text-[10px] sm:text-xs text-stone-400 dark:text-stone-500 mt-1 sm:mt-2 font-medium uppercase tracking-widest">
                               {level.stones[0]}~{level.stones[1]} {t.stones} | {level.attempts} {t.attempts}
                             </span>
                             <div className="absolute bottom-0 left-0 h-1 bg-emerald-500 transition-all duration-300 w-0 group-hover:w-full"></div>
@@ -729,29 +730,29 @@ function GameContent() {
 
             {gameState === 'memorize' && currentLevel && (
               <div className="flex flex-col items-center w-full animate-in fade-in duration-300">
-                <div className="flex justify-between w-full mb-8 items-center px-2">
+                <div className="flex justify-between w-full mb-4 sm:mb-8 items-center px-1 sm:px-2">
                   <div className="flex flex-col">
-                    <Badge variant="secondary" className="w-fit mb-1">{currentLevel.name(lang)}</Badge>
-                    <h3 className="text-xl font-bold text-stone-800 dark:text-stone-100">{t.memorizePhase}</h3>
+                    <Badge variant="secondary" className="w-fit mb-0.5 sm:mb-1 text-[10px] sm:text-xs">{currentLevel.name(lang)}</Badge>
+                    <h3 className="text-lg sm:text-xl font-bold text-stone-800 dark:text-stone-100">{t.memorizePhase}</h3>
                   </div>
                   <div className="flex flex-col items-end">
-                    <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">{t.timeLeft}</p>
-                    <div className="flex items-center gap-2">
-                      <span className="text-amber-600 dark:text-amber-400 font-mono text-3xl font-black">{timeLeft}</span>
-                      <span className="text-amber-600 dark:text-amber-400 text-sm font-bold">s</span>
+                    <p className="text-[8px] sm:text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-0.5 sm:mb-1">{t.timeLeft}</p>
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <span className="text-amber-600 dark:text-amber-400 font-mono text-2xl sm:text-3xl font-black">{timeLeft}</span>
+                      <span className="text-amber-600 dark:text-amber-400 text-xs sm:text-sm font-bold">s</span>
                     </div>
                   </div>
                 </div>
                 
-                <Progress value={(timeLeft / 30) * 100} className="w-full mb-8 h-1.5 bg-stone-100 dark:bg-stone-800" />
+                <Progress value={(timeLeft / 30) * 100} className="w-full mb-6 sm:mb-8 h-1 sm:h-1.5 bg-stone-100 dark:bg-stone-800" />
                 
-                <div className="bg-stone-50 dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-inner">
+                <div className="bg-stone-50 dark:bg-stone-800 p-2 sm:p-4 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-inner w-full flex justify-center">
                   <GoBoard size={currentLevel.size} boardState={problemBoard} interactive={false} />
                 </div>
                 
                 <Button
                   onClick={() => setGameState('recall')}
-                  className="mt-10 bg-emerald-600 text-white px-10 py-6 rounded-full font-bold hover:bg-emerald-700 transition-all shadow-md hover:shadow-lg text-lg"
+                  className="mt-6 sm:mt-10 bg-emerald-600 text-white px-8 sm:px-10 py-5 sm:py-6 rounded-full font-bold hover:bg-emerald-700 transition-all shadow-md hover:shadow-lg text-base sm:text-lg w-full sm:w-auto"
                 >
                   {t.startChallenge}
                 </Button>
@@ -760,22 +761,22 @@ function GameContent() {
 
             {gameState === 'recall' && currentLevel && (
               <div className="flex flex-col items-center w-full animate-in fade-in duration-300">
-                <div className="flex justify-between w-full mb-8 items-center px-2">
+                <div className="flex justify-between w-full mb-4 sm:mb-8 items-center px-1 sm:px-2">
                   <div className="flex flex-col">
-                    <Badge variant="secondary" className="w-fit mb-1">{currentLevel.name(lang)}</Badge>
-                    <h3 className="text-xl font-bold text-stone-800 dark:text-stone-100">{t.recallPhase}</h3>
+                    <Badge variant="secondary" className="w-fit mb-0.5 sm:mb-1 text-[10px] sm:text-xs">{currentLevel.name(lang)}</Badge>
+                    <h3 className="text-lg sm:text-xl font-bold text-stone-800 dark:text-stone-100">{t.recallPhase}</h3>
                   </div>
                   <div className="flex flex-col items-end">
-                    <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-1">{t.remainingAttempts}</p>
+                    <p className="text-[8px] sm:text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-0.5 sm:mb-1">{t.remainingAttempts}</p>
                     <div className="flex items-center gap-1">
                       {Array.from({ length: currentLevel.attempts }).map((_, i) => (
-                        <div key={i} className={`w-3 h-3 rounded-full ${i < attemptsLeft ? 'bg-red-500' : 'bg-stone-200 dark:bg-stone-700'}`}></div>
+                        <div key={i} className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full ${i < attemptsLeft ? 'bg-red-500' : 'bg-stone-200 dark:bg-stone-700'}`}></div>
                       ))}
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-stone-50 dark:bg-stone-800 p-4 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-inner">
+                <div className="bg-stone-50 dark:bg-stone-800 p-2 sm:p-4 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-inner w-full flex justify-center">
                   <GoBoard
                     size={currentLevel.size}
                     boardState={isPeeking ? problemBoard : userBoard}
@@ -790,55 +791,55 @@ function GameContent() {
                 </div>
 
                 {isPeeking && (
-                  <div className="mt-4 flex flex-col items-center animate-pulse">
-                    <p className="text-amber-600 dark:text-amber-400 font-bold text-sm uppercase tracking-widest mb-1">{t.memorizePhase}</p>
-                    <div className="flex items-center gap-2">
-                      <span className="text-amber-600 dark:text-amber-400 font-mono text-2xl font-black">{peekTimeLeft}</span>
-                      <span className="text-amber-600 dark:text-amber-400 text-xs font-bold">s</span>
+                  <div className="mt-3 sm:mt-4 flex flex-col items-center animate-pulse">
+                    <p className="text-amber-600 dark:text-amber-400 font-bold text-[10px] sm:text-sm uppercase tracking-widest mb-1">{t.memorizePhase}</p>
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <span className="text-amber-600 dark:text-amber-400 font-mono text-xl sm:text-2xl font-black">{peekTimeLeft}</span>
+                      <span className="text-amber-600 dark:text-amber-400 text-[10px] sm:text-xs font-bold">s</span>
                     </div>
                   </div>
                 )}
 
                 {/* Toolbar */}
-                <div className="flex gap-4 mt-10 bg-stone-100 dark:bg-stone-800 p-2 rounded-2xl shadow-inner border border-stone-200 dark:border-stone-700">
+                <div className="flex gap-2 sm:gap-4 mt-6 sm:mt-10 bg-stone-100 dark:bg-stone-800 p-1.5 sm:p-2 rounded-2xl shadow-inner border border-stone-200 dark:border-stone-700">
                   <Button
                     variant={selectedTool === 1 ? 'default' : 'ghost'}
                     size="icon"
                     onClick={() => setSelectedTool(1)}
-                    className={`w-16 h-16 rounded-xl transition-all ${selectedTool === 1 ? 'bg-white dark:bg-stone-900 shadow-md ring-2 ring-emerald-500 scale-110' : ''}`}
+                    className={`w-12 h-12 sm:w-16 sm:h-16 rounded-xl transition-all ${selectedTool === 1 ? 'bg-white dark:bg-stone-900 shadow-md ring-2 ring-emerald-500 scale-110' : ''}`}
                   >
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-stone-600 to-black shadow-sm" />
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-stone-600 to-black shadow-sm" />
                   </Button>
                   <Button
                     variant={selectedTool === 2 ? 'default' : 'ghost'}
                     size="icon"
                     onClick={() => setSelectedTool(2)}
-                    className={`w-16 h-16 rounded-xl transition-all ${selectedTool === 2 ? 'bg-white dark:bg-stone-900 shadow-md ring-2 ring-emerald-500 scale-110' : ''}`}
+                    className={`w-12 h-12 sm:w-16 sm:h-16 rounded-xl transition-all ${selectedTool === 2 ? 'bg-white dark:bg-stone-900 shadow-md ring-2 ring-emerald-500 scale-110' : ''}`}
                   >
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-white to-stone-300 shadow-sm border border-stone-200 dark:border-stone-700" />
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-white to-stone-300 shadow-sm border border-stone-200 dark:border-stone-700" />
                   </Button>
                   <Button
                     variant={selectedTool === 0 ? 'default' : 'ghost'}
                     size="icon"
                     onClick={() => setSelectedTool(0)}
-                    className={`w-16 h-16 rounded-xl transition-all ${selectedTool === 0 ? 'bg-white dark:bg-stone-900 shadow-md ring-2 ring-emerald-500 scale-110' : ''}`}
+                    className={`w-12 h-12 sm:w-16 sm:h-16 rounded-xl transition-all ${selectedTool === 0 ? 'bg-white dark:bg-stone-900 shadow-md ring-2 ring-emerald-500 scale-110' : ''}`}
                   >
-                    <X className="w-8 h-8 text-stone-500" />
+                    <X className="w-6 h-6 sm:w-8 sm:h-8 text-stone-500" />
                   </Button>
                 </div>
 
                 {message && (
-                  <div className="mt-6 text-red-500 font-bold animate-bounce bg-red-50 dark:bg-red-900/20 px-6 py-2 rounded-full border border-red-100 dark:border-red-900/30 text-sm">
+                  <div className="mt-4 sm:mt-6 text-red-500 font-bold animate-bounce bg-red-50 dark:bg-red-900/20 px-4 sm:px-6 py-1.5 sm:py-2 rounded-full border border-red-100 dark:border-red-900/30 text-[10px] sm:text-sm">
                     {message}
                   </div>
                 )}
 
-                <div className="flex flex-col sm:flex-row gap-4 mt-10 w-full sm:w-auto">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6 sm:mt-10 w-full sm:w-auto">
                   {currentLevel.id !== 'extreme' && !hasPeeked && (
                     <Button
                       variant="outline"
                       onClick={handlePeek}
-                      className="px-8 py-7 rounded-full font-bold border-stone-200 dark:border-stone-700 text-lg dark:text-stone-100 flex-1 sm:flex-none"
+                      className="px-6 sm:px-8 py-5 sm:py-7 rounded-full font-bold border-stone-200 dark:border-stone-700 text-base sm:text-lg dark:text-stone-100 flex-1 sm:flex-none"
                     >
                       {t.peek}
                     </Button>
@@ -846,7 +847,7 @@ function GameContent() {
                   <Button
                     onClick={handleSubmit}
                     disabled={isPeeking}
-                    className="bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 px-12 py-7 rounded-full font-bold hover:bg-stone-800 dark:hover:bg-stone-200 transition-all shadow-md hover:shadow-lg flex-1 sm:flex-none text-xl"
+                    className="bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 px-10 sm:px-12 py-5 sm:py-7 rounded-full font-bold hover:bg-stone-800 dark:hover:bg-stone-200 transition-all shadow-md hover:shadow-lg flex-1 sm:flex-none text-lg sm:text-xl"
                   >
                     {t.submitAnswer}
                   </Button>

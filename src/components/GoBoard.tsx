@@ -35,8 +35,8 @@ export const GoBoard: React.FC<GoBoardProps> = ({
   }
 
   return (
-    <div className="relative w-full max-w-md aspect-square bg-[#E3C16F] shadow-xl rounded-sm border-2 border-[#8B5A2B] p-2">
-      <svg viewBox={`0 0 ${boardPixelSize} ${boardPixelSize}`} className="w-full h-full">
+    <div className="relative w-full max-w-[min(90vw,448px)] aspect-square bg-[#E3C16F] shadow-xl rounded-sm border-2 border-[#8B5A2B] p-1 sm:p-2">
+      <svg viewBox={`0 0 ${boardPixelSize} ${boardPixelSize}`} className="w-full h-full touch-none">
         {Array.from({ length: size }).map((_, i) => (
           <g key={`lines-${i}`}>
             <line 
