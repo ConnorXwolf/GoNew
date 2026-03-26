@@ -1,21 +1,19 @@
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
-  GoogleAuthProvider, 
-  signInWithPopup, 
   signOut,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  updateProfile
+  updateProfile,
+  sendPasswordResetEmail
 } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion, onSnapshot, getDocFromServer } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion, onSnapshot, getDocFromServer, runTransaction } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 // Initialize Firebase SDK
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
 
 // Error Handling Spec for Firestore Operations
 export enum OperationType {
@@ -81,22 +79,51 @@ async function testConnection() {
 }
 testConnection();
 
-export const loginWithGoogle = async () => {
-  try {
-    const result = await signInWithPopup(auth, googleProvider);
-    return await handleUserDoc(result.user);
-  } catch (error) {
-    console.error("Google Login Error:", error);
-    throw error;
-  }
-};
-
 export const registerWithEmail = async (email: string, pass: string, name: string) => {
   try {
+    // 1. Check if nickname is unique
+    const nicknameRef = doc(db, 'nicknames', name.toLowerCase());
+    const nicknameDoc = await getDoc(nicknameRef);
+    if (nicknameDoc.exists()) {
+      throw new Error('該用戶名稱已被使用，請換一個。');
+    }
+
+    // 2. Create user in Auth
     const result = await createUserWithEmailAndPassword(auth, email, pass);
     await updateProfile(result.user, { displayName: name });
-    return await handleUserDoc(result.user, name);
-  } catch (error) {
+
+    // 3. Claim nickname and create user doc in a transaction
+    await runTransaction(db, async (transaction) => {
+      const nRef = doc(db, 'nicknames', name.toLowerCase());
+      const nDoc = await transaction.get(nRef);
+      if (nDoc.exists()) {
+        throw new Error('該用戶名稱已被使用，請換一個。');
+      }
+
+      const userRef = doc(db, 'users', result.user.uid);
+      transaction.set(nRef, { uid: result.user.uid });
+      transaction.set(userRef, {
+        uid: result.user.uid,
+        email: result.user.email,
+        displayName: name,
+        photoURL: `https://api.dicebear.com/7.x/avataaars/svg?seed=${result.user.uid}`,
+        solvedProblems: [],
+        stats: {
+          totalPlayed: 0,
+          totalCorrect: 0,
+          maxStreak: 0,
+          lastSolvedDate: new Date().toISOString(),
+          levelPlays: {},
+          levelCorrect: {},
+          levelMaxStreak: {},
+          levelCurrentStreak: {}
+        },
+        achievements: []
+      });
+    });
+
+    return result.user;
+  } catch (error: any) {
     console.error("Registration Error:", error);
     throw error;
   }
@@ -118,6 +145,8 @@ const handleUserDoc = async (user: any, name?: string) => {
     const userDoc = await getDoc(userRef);
     
     if (!userDoc.exists()) {
+      // This should only happen if registration failed halfway or for legacy users
+      // But for simplicity, we just create it if it doesn't exist
       await setDoc(userRef, {
         uid: user.uid,
         email: user.email,
@@ -144,3 +173,12 @@ const handleUserDoc = async (user: any, name?: string) => {
 };
 
 export const logout = () => signOut(auth);
+
+export const resetPassword = async (email: string) => {
+  try {
+    await sendPasswordResetEmail(auth, email);
+  } catch (error) {
+    console.error("Password Reset Error:", error);
+    throw error;
+  }
+};

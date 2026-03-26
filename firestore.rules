@@ -66,6 +66,13 @@ service cloud.firestore {
                     (!('role' in request.resource.data) || request.resource.data.role == resource.data.role);
     }
 
+    match /nicknames/{nickname} {
+      // Anyone can check if a nickname exists
+      allow read: if true;
+      // Only the owner can create their nickname mapping
+      allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid;
+    }
+
     // Default deny
     match /{path=**} {
       allow read, write: if false;

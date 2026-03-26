@@ -34,12 +34,25 @@
         }
       },
       "required": ["uid", "email", "solvedProblems", "stats", "achievements"]
+    },
+    "Nickname": {
+      "title": "Nickname",
+      "description": "Nickname mapping to user ID to ensure uniqueness",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user ID associated with this nickname" }
+      },
+      "required": ["uid"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "User",
       "description": "User profiles and progress"
+    },
+    "/nicknames/{nickname}": {
+      "schema": "Nickname",
+      "description": "Mapping of nicknames to user IDs"
     }
   }
 }
