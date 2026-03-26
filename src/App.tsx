@@ -228,6 +228,7 @@ function GameContent() {
   const [peekTimeLeft, setPeekTimeLeft] = useState(0);
   const [hasPeeked, setHasPeeked] = useState(false);
   const [lastProblemId, setLastProblemId] = useState<string | null>(null);
+  const [userMoves, setUserMoves] = useState<{x: number, y: number, color: number}[]>([]);
 
   // Stats & Achievements
   const [stats, setStats] = useState<UserStats>(DEFAULT_STATS);
@@ -430,6 +431,7 @@ function GameContent() {
     setIsPeeking(false);
     setPeekTimeLeft(0);
     setHasPeeked(false);
+    setUserMoves([]);
   };
 
   const handleStartGame = (levelKey: string) => {
@@ -477,6 +479,35 @@ function GameContent() {
         }
       }
       if (!isCorrect) break;
+    }
+
+    // Extreme mode: Check move sequence
+    if (isCorrect && currentLevel.id === 'extreme') {
+      // Get all problem stones and their move numbers
+      const problemStones: {x: number, y: number, move: number}[] = [];
+      for (let y = 0; y < currentLevel.size; y++) {
+        for (let x = 0; x < currentLevel.size; x++) {
+          const pStone = problemBoard[y][x];
+          if (pStone !== 0) {
+            problemStones.push({ x, y, move: Math.floor(pStone / 10) });
+          }
+        }
+      }
+      
+      // Sort problem stones by move number
+      problemStones.sort((a, b) => a.move - b.move);
+
+      // Check if user moves match the sequence
+      if (userMoves.length !== problemStones.length) {
+        isCorrect = false;
+      } else {
+        for (let i = 0; i < problemStones.length; i++) {
+          if (userMoves[i].x !== problemStones[i].x || userMoves[i].y !== problemStones[i].y) {
+            isCorrect = false;
+            break;
+          }
+        }
+      }
     }
 
     if (isCorrect) {
@@ -645,6 +676,7 @@ function GameContent() {
                         <SelectItem value="zh">繁體中文</SelectItem>
                         <SelectItem value="en">English</SelectItem>
                         <SelectItem value="ja">日本語</SelectItem>
+                        <SelectItem value="es">Español</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -817,6 +849,10 @@ function GameContent() {
                           <div className="w-5 h-5 rounded-full bg-stone-200 dark:bg-stone-700 flex items-center justify-center text-[10px] font-bold shrink-0 text-stone-600 dark:text-stone-300">3</div>
                           <p>{t.rule3}</p>
                         </li>
+                        <li className="flex gap-3">
+                          <div className="w-5 h-5 rounded-full bg-stone-200 dark:bg-stone-700 flex items-center justify-center text-[10px] font-bold shrink-0 text-stone-600 dark:text-stone-300">4</div>
+                          <p>{t.rule4}</p>
+                        </li>
                       </ul>
                     </div>
                   </div>
@@ -882,8 +918,20 @@ function GameContent() {
                       if (!userBoard[y]) return;
                       const newBoard = [...userBoard];
                       newBoard[y] = [...newBoard[y]];
+                      const oldColor = newBoard[y][x];
                       newBoard[y][x] = selectedTool;
                       setUserBoard(newBoard);
+
+                      if (selectedTool !== 0) {
+                        if (oldColor === 0) {
+                          setUserMoves([...userMoves, { x, y, color: selectedTool }]);
+                        } else {
+                          const filtered = userMoves.filter(m => !(m.x === x && m.y === y));
+                          setUserMoves([...filtered, { x, y, color: selectedTool }]);
+                        }
+                      } else {
+                        setUserMoves(userMoves.filter(m => !(m.x === x && m.y === y)));
+                      }
                     }}
                   />
                 </div>
