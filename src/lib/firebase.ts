@@ -8,7 +8,18 @@ import {
   sendPasswordResetEmail
 } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion, onSnapshot, getDocFromServer, runTransaction } from 'firebase/firestore';
-import firebaseConfig from '../../firebase-applet-config.json';
+import configJson from '../../firebase-applet-config.json';
+
+// Use environment variables if available (for Netlify), otherwise fallback to configJson (for AI Studio)
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || configJson.apiKey,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || configJson.authDomain,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || configJson.projectId,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || configJson.storageBucket,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || configJson.messagingSenderId,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || configJson.appId,
+  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || configJson.firestoreDatabaseId,
+};
 
 // Initialize Firebase SDK
 const app = initializeApp(firebaseConfig);
