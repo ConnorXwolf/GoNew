@@ -93,8 +93,10 @@ function AuthModal({ lang }: { lang: Language }) {
       />
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader className="flex flex-col items-center">
-          <div className="w-20 h-20 mb-4 rounded-2xl overflow-hidden shadow-md border border-stone-200 dark:border-stone-800">
-            <img src="/logo.ico" alt="GoMemo Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-stone-800 to-stone-600 shadow-md border border-stone-900"></div>
+            <span className="text-3xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">GoMemo</span>
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-white to-stone-200 shadow-md border border-stone-300"></div>
           </div>
           <DialogTitle className="text-2xl font-bold text-center">{t.welcome}</DialogTitle>
           <DialogDescription className="text-center">
@@ -565,9 +567,10 @@ function GameContent() {
         {/* Header */}
         <header className="flex flex-col sm:flex-row justify-between items-center mb-6 sm:mb-8 bg-white dark:bg-stone-900 p-3 sm:p-4 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 gap-3 sm:gap-4">
           <div className="flex items-center justify-between w-full sm:w-auto gap-2 sm:gap-4">
-            <h1 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-stone-100 flex items-center gap-3">
-              <img src="/logo.ico" alt="Logo" className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg shadow-sm border border-stone-200 dark:border-stone-800 object-cover" referrerPolicy="no-referrer" />
+            <h1 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+              <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-br from-stone-800 to-stone-600 shadow-sm border border-stone-900"></div>
               GoMemo
+              <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-br from-white to-stone-200 shadow-sm border border-stone-300"></div>
             </h1>
             
             <div className="flex items-center gap-2">
