@@ -22,7 +22,8 @@ import {
   EyeOff,
   Mail,
   Lock,
-  Loader2
+  Loader2,
+  Languages
 } from 'lucide-react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -39,11 +40,32 @@ import {
 import { GoBoard } from './components/GoBoard';
 import { PROBLEMS as DEFAULT_PROBLEMS } from './constants';
 import { Problem, Stone } from './types';
-
-const QUADRANTS = ['全部', '左上', '右上', '左下', '右下'];
-const LEVELS = ['全部', '初學', '基礎', '中階', '高階', '極限'];
+import { translations, Language } from './translations';
 
 const App: React.FC = () => {
+  const [language, setLanguage] = useState<Language>(() => {
+    const saved = localStorage.getItem('gomemo_lang');
+    return (saved as Language) || 'zh';
+  });
+
+  const t = translations[language];
+
+  const QUADRANTS = [
+    { id: '全部', label: t.all },
+    { id: '左上', label: t.topLeft },
+    { id: '右上', label: t.topRight },
+    { id: '左下', label: t.bottomLeft },
+    { id: '右下', label: t.bottomRight }
+  ];
+  const LEVELS = [
+    { id: '全部', label: t.all },
+    { id: '初學', label: t.beginner },
+    { id: '基礎', label: t.basic },
+    { id: '中階', label: t.intermediate },
+    { id: '高階', label: t.advanced },
+    { id: '極限', label: t.extreme }
+  ];
+
   const [allProblems] = useState<Problem[]>(DEFAULT_PROBLEMS);
   const [filteredProblems, setFilteredProblems] = useState<Problem[]>([]);
   const [selectedQuadrant, setSelectedQuadrant] = useState('全部');
@@ -139,6 +161,10 @@ const App: React.FC = () => {
   }, [user, authLoading]);
 
   useEffect(() => {
+    localStorage.setItem('gomemo_lang', language);
+  }, [language]);
+
+  useEffect(() => {
     const filtered = allProblems.filter(p => {
       const qMatch = selectedQuadrant === '全部' || p.quadrant === selectedQuadrant;
       
@@ -189,7 +215,7 @@ const App: React.FC = () => {
     try {
       if (authMode === 'register') {
         if (password !== confirmPassword) {
-          setAuthError('兩次輸入的密碼不一致');
+          setAuthError(t.passwordMismatch);
           setIsAuthProcessing(false);
           return;
         }
@@ -204,7 +230,7 @@ const App: React.FC = () => {
       setConfirmPassword('');
       setDisplayName('');
     } catch (err: any) {
-      setAuthError(err.message || '認證失敗');
+      setAuthError(err.message || t.authFailed);
     } finally {
       setIsAuthProcessing(false);
     }
@@ -375,11 +401,25 @@ const App: React.FC = () => {
             <BookOpen className="w-6 h-6 text-black" />
           </div>
           <div className="hidden sm:block">
-            <h1 className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">GoMemo • 棋型記憶訓練</h1>
+            <h1 className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">{t.title}</h1>
           </div>
         </div>
         
         <div className="flex items-center gap-4 sm:gap-8">
+          {/* Language Switcher */}
+          <div className="flex items-center gap-2 bg-white/5 p-1 rounded-xl border border-white/10">
+            <Languages className="w-4 h-4 text-white/40 ml-2" />
+            <select 
+              value={language}
+              onChange={(e) => setLanguage(e.target.value as Language)}
+              className="bg-transparent text-sm font-bold text-white/60 focus:outline-none pr-2 cursor-pointer hover:text-white transition-colors"
+            >
+              <option value="zh" className="bg-[#1a1a1a]">中文</option>
+              <option value="en" className="bg-[#1a1a1a]">English</option>
+              <option value="ja" className="bg-[#1a1a1a]">日本語</option>
+            </select>
+          </div>
+
           <div className="h-8 w-px bg-white/10 hidden sm:block" />
           
           {/* Auth Button */}
@@ -397,7 +437,7 @@ const App: React.FC = () => {
                     onClick={() => logout()}
                     className="text-sm text-white/30 uppercase tracking-widest hover:text-red-400 transition-colors text-left"
                   >
-                    登出
+                    {t.logout}
                   </button>
                 </div>
               </div>
@@ -410,7 +450,7 @@ const App: React.FC = () => {
                 className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all group"
               >
                 <LogIn className="w-4 h-4 text-white/60 group-hover:text-white" />
-                <span className="text-sm font-bold uppercase tracking-widest text-white/60 group-hover:text-white">登入同步</span>
+                <span className="text-sm font-bold uppercase tracking-widest text-white/60 group-hover:text-white">{t.loginSync}</span>
               </button>
             )}
           </div>
@@ -419,7 +459,7 @@ const App: React.FC = () => {
           
           {selectedLevel !== '極限' && (
             <div className="hidden sm:flex flex-col items-end">
-              <span className="text-sm text-white/30 uppercase font-mono tracking-widest">剩餘機會</span>
+              <span className="text-sm text-white/30 uppercase font-mono tracking-widest">{t.remainingAttempts}</span>
               <div className="flex gap-1 mt-1">
                 {[...Array(3)].map((_, i) => (
                   <div 
@@ -437,7 +477,7 @@ const App: React.FC = () => {
             onClick={() => setShowStats(true)}
             className="flex flex-col items-center group transition-all relative"
           >
-            <span className="text-sm text-white/30 uppercase font-mono tracking-widest group-hover:text-orange-400">學習進度</span>
+            <span className="text-sm text-white/30 uppercase font-mono tracking-widest group-hover:text-orange-400">{t.learningProgress}</span>
             <BarChart3 className="w-5 h-5 text-orange-400 mt-1 group-hover:scale-110 transition-transform" />
             {isSyncing && (
               <Cloud className="w-3 h-3 text-blue-400 absolute -top-1 -right-2 animate-bounce" />
@@ -447,13 +487,13 @@ const App: React.FC = () => {
           <div className="h-8 w-px bg-white/10 hidden sm:block" />
           
           <div className="hidden sm:flex flex-col items-end">
-            <span className="text-sm text-white/30 uppercase font-mono tracking-widest">總體掌握度</span>
+            <span className="text-sm text-white/30 uppercase font-mono tracking-widest">{t.totalMastery}</span>
             <span className="text-2xl font-mono text-orange-400 tabular-nums">{score.toString().padStart(4, '0')}</span>
           </div>
           <div className="h-8 w-px bg-white/10 hidden sm:block" />
           <div className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-full border border-white/10">
             <Target className="w-4 h-4 text-blue-400" />
-            <span className="text-sm font-bold uppercase tracking-wider text-blue-400">題目 {currentProblemIndex + 1} / {filteredProblems.length}</span>
+            <span className="text-sm font-bold uppercase tracking-wider text-blue-400">{t.problem} {currentProblemIndex + 1} / {filteredProblems.length}</span>
           </div>
         </div>
       </header>
@@ -464,37 +504,37 @@ const App: React.FC = () => {
           {/* Filters */}
           <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white/5 p-4 rounded-3xl border border-white/10 backdrop-blur-md">
             <div className="space-y-2">
-              <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">方位分區</label>
+              <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.quadrant}</label>
               <div className="flex flex-wrap gap-2">
                 {QUADRANTS.map(q => (
                   <button
-                    key={q}
-                    onClick={() => { setSelectedQuadrant(q); setCurrentProblemIndex(0); }}
+                    key={q.id}
+                    onClick={() => { setSelectedQuadrant(q.id); setCurrentProblemIndex(0); }}
                     className={`px-3 py-1.5 rounded-xl text-sm font-bold uppercase tracking-widest transition-all ${
-                      selectedQuadrant === q 
+                      selectedQuadrant === q.id 
                         ? 'bg-orange-500 text-black shadow-lg shadow-orange-500/20' 
                         : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white'
                     }`}
                   >
-                    {q}
+                    {q.label}
                   </button>
                 ))}
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">難度等級</label>
+              <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.difficulty}</label>
               <div className="flex flex-wrap gap-2">
                 {LEVELS.map(l => (
                   <button
-                    key={l}
-                    onClick={() => { setSelectedLevel(l); setCurrentProblemIndex(0); }}
+                    key={l.id}
+                    onClick={() => { setSelectedLevel(l.id); setCurrentProblemIndex(0); }}
                     className={`px-3 py-1.5 rounded-xl text-sm font-bold uppercase tracking-widest transition-all ${
-                      selectedLevel === l 
+                      selectedLevel === l.id 
                         ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' 
                         : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white'
                     }`}
                   >
-                    {l}
+                    {l.label}
                   </button>
                 ))}
               </div>
@@ -514,7 +554,7 @@ const App: React.FC = () => {
                 >
                   <Brain className="w-5 h-5 animate-pulse" />
                   <div className="flex flex-col">
-                    <span className="text-sm uppercase font-black tracking-widest leading-none opacity-60">記憶中</span>
+                    <span className="text-sm uppercase font-black tracking-widest leading-none opacity-60">{t.memorizing}</span>
                     <span className="text-xl font-mono font-black tabular-nums leading-none">{memoryTimer}s</span>
                   </div>
                 </motion.div>
@@ -529,8 +569,8 @@ const App: React.FC = () => {
                 >
                   <Brain className="w-5 h-5" />
                   <div className="flex flex-col">
-                    <span className="text-sm uppercase font-black tracking-widest leading-none opacity-60">作答模式</span>
-                    <span className="text-sm font-black uppercase tracking-widest leading-none">進行中</span>
+                    <span className="text-sm uppercase font-black tracking-widest leading-none opacity-60">{t.recallMode}</span>
+                    <span className="text-sm font-black uppercase tracking-widest leading-none">{t.inProgress}</span>
                   </div>
                 </motion.div>
               )}
@@ -555,7 +595,7 @@ const App: React.FC = () => {
                   />
                 ) : (
                   <div className="w-[400px] h-[400px] flex items-center justify-center text-white/20">
-                    此分類下無題目
+                    {t.noProblems}
                   </div>
                 )}
               </motion.div>
@@ -573,8 +613,8 @@ const App: React.FC = () => {
                   <div className="bg-emerald-500 text-black px-10 py-5 rounded-2xl flex items-center gap-4 shadow-[0_0_50px_rgba(16,185,129,0.4)]">
                     <CheckCircle2 className="w-10 h-10" />
                     <div className="flex flex-col">
-                      <span className="text-2xl font-black uppercase italic leading-none">正解！</span>
-                      <span className="text-sm font-bold uppercase tracking-widest opacity-80">掌握棋型</span>
+                      <span className="text-2xl font-black uppercase italic leading-none">{t.correct}</span>
+                      <span className="text-sm font-bold uppercase tracking-widest opacity-80">{t.masteredPattern}</span>
                     </div>
                   </div>
                 </motion.div>
@@ -589,8 +629,8 @@ const App: React.FC = () => {
                   <div className="bg-red-500 text-white px-10 py-5 rounded-2xl flex items-center gap-4 shadow-[0_0_50px_rgba(239,68,68,0.4)]">
                     <XCircle className="w-10 h-10" />
                     <div className="flex flex-col">
-                      <span className="text-2xl font-black uppercase italic leading-none">不對</span>
-                      <span className="text-sm font-bold uppercase tracking-widest opacity-80">再試一次</span>
+                      <span className="text-2xl font-black uppercase italic leading-none">{t.wrong}</span>
+                      <span className="text-sm font-bold uppercase tracking-widest opacity-80">{t.tryAgain}</span>
                     </div>
                   </div>
                 </motion.div>
@@ -609,7 +649,7 @@ const App: React.FC = () => {
                 className="px-8 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition-all active:scale-95 border border-white/10 flex items-center gap-2"
               >
                 <Target className="w-4 h-4 text-orange-400" />
-                <span>立刻開始作答</span>
+                <span>{t.startRecallNow}</span>
               </motion.button>
             )}
 
@@ -628,7 +668,7 @@ const App: React.FC = () => {
                     }`}
                   >
                     <Circle className="w-4 h-4 fill-current" />
-                    <span className="text-sm uppercase tracking-widest">黑子</span>
+                    <span className="text-sm uppercase tracking-widest">{t.blackStone}</span>
                   </button>
                   <button
                     onClick={() => setSelectedTool('white')}
@@ -637,7 +677,7 @@ const App: React.FC = () => {
                     }`}
                   >
                     <Circle className="w-4 h-4" />
-                    <span className="text-sm uppercase tracking-widest">白子</span>
+                    <span className="text-sm uppercase tracking-widest">{t.whiteStone}</span>
                   </button>
                   <div className="w-px h-4 bg-white/10 mx-1" />
                   <button
@@ -647,7 +687,7 @@ const App: React.FC = () => {
                     }`}
                   >
                     <Eraser className="w-4 h-4" />
-                    <span className="text-sm uppercase tracking-widest">橡皮擦</span>
+                    <span className="text-sm uppercase tracking-widest">{t.eraser}</span>
                   </button>
                 </div>
 
@@ -657,7 +697,7 @@ const App: React.FC = () => {
                     className="flex items-center gap-2 px-6 py-2 rounded-full bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 border border-orange-500/30 transition-all active:scale-95 group"
                   >
                     <Brain className="w-4 h-4 group-hover:animate-pulse" />
-                    <span className="text-sm font-bold uppercase tracking-widest">再看一次 (10秒)</span>
+                    <span className="text-sm font-bold uppercase tracking-widest">{t.peek}</span>
                   </button>
                 )}
               </motion.div>
@@ -677,7 +717,7 @@ const App: React.FC = () => {
                 className="px-8 py-4 rounded-xl hover:bg-white/10 flex items-center gap-3 transition-all active:scale-95 group"
               >
                 <RotateCcw className="w-5 h-5 text-orange-500 group-hover:rotate-[-180deg] transition-transform duration-500" />
-                <span className="font-bold uppercase tracking-widest text-sm">重置</span>
+                <span className="font-bold uppercase tracking-widest text-sm">{t.reset}</span>
               </button>
               <div className="h-8 w-px bg-white/10" />
               {status === 'idle' ? (
@@ -686,7 +726,7 @@ const App: React.FC = () => {
                   className="px-8 py-4 rounded-xl bg-orange-500 hover:bg-orange-400 text-black flex items-center gap-3 transition-all active:scale-95 group shadow-lg shadow-orange-500/20"
                 >
                   <Brain className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold uppercase tracking-widest text-sm">開始作答</span>
+                  <span className="font-bold uppercase tracking-widest text-sm">{t.startTraining}</span>
                 </button>
               ) : status === 'placing' ? (
                 <button 
@@ -694,12 +734,12 @@ const App: React.FC = () => {
                   className="px-8 py-4 rounded-xl bg-blue-500 hover:bg-blue-400 text-white flex items-center gap-3 transition-all active:scale-95 group shadow-lg shadow-blue-500/20"
                 >
                   <CheckCircle2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold uppercase tracking-widest text-sm">確認答案</span>
+                  <span className="font-bold uppercase tracking-widest text-sm">{t.checkAnswer}</span>
                 </button>
               ) : (
                 <div className="px-8 py-4 flex items-center gap-3 text-white/20">
                   <Brain className="w-5 h-5" />
-                  <span className="font-bold uppercase tracking-widest text-sm">進行中...</span>
+                  <span className="font-bold uppercase tracking-widest text-sm">{t.inProgress}...</span>
                 </div>
               )}
               <div className="h-8 w-px bg-white/10" />
@@ -720,7 +760,7 @@ const App: React.FC = () => {
                 onClick={nextProblem}
                 className="w-full max-w-xs py-6 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-black font-black text-xl transition-all shadow-xl shadow-orange-500/20 active:scale-[0.98] flex items-center justify-center gap-3"
               >
-                <span>下一題挑戰</span>
+                <span>{t.nextProblem}</span>
                 <ChevronRight className="w-6 h-6" />
               </motion.button>
             )}
@@ -737,7 +777,7 @@ const App: React.FC = () => {
             <div className="w-2 h-2 rounded-full bg-white" />
           </div>
           <p className="text-sm font-mono uppercase tracking-[0.4em] text-white/20">
-            手筋辭典 • 經典題目 • 棋型記憶
+            {t.footer}
           </p>
         </div>
       </footer>
@@ -764,7 +804,7 @@ const App: React.FC = () => {
                   <div className="bg-orange-500/20 p-2 rounded-xl">
                     <BarChart3 className="w-6 h-6 text-orange-500" />
                   </div>
-                  <h2 className="text-2xl font-bold">學習進度統計</h2>
+                  <h2 className="text-2xl font-bold">{t.statsTitle}</h2>
                 </div>
                 <button 
                   onClick={() => setShowStats(false)}
@@ -775,21 +815,21 @@ const App: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 gap-4">
-                {LEVELS.filter(l => l !== '全部').map(level => {
-                  const s = stats[level] || { attempted: 0, correct: 0 };
+                {LEVELS.filter(l => l.id !== '全部').map(level => {
+                  const s = stats[level.id] || { attempted: 0, correct: 0 };
                   const rate = s.attempted > 0 ? Math.round((s.correct / s.attempted) * 100) : 0;
                   
                   return (
-                    <div key={level} className="bg-white/5 p-6 rounded-3xl border border-white/5 flex items-center justify-between group hover:bg-white/10 transition-all">
+                    <div key={level.id} className="bg-white/5 p-6 rounded-3xl border border-white/5 flex items-center justify-between group hover:bg-white/10 transition-all">
                       <div className="flex flex-col">
-                        <span className="text-lg font-bold text-white/90">{level}</span>
+                        <span className="text-lg font-bold text-white/90">{level.label}</span>
                         <div className="flex gap-4 mt-1">
-                          <span className="text-sm text-white/40 font-mono">已學習: <span className="text-white/80">{s.attempted}</span></span>
-                          <span className="text-sm text-white/40 font-mono">已答對: <span className="text-emerald-400/80">{s.correct}</span></span>
+                          <span className="text-sm text-white/40 font-mono">{t.attempted}: <span className="text-white/80">{s.attempted}</span></span>
+                          <span className="text-sm text-white/40 font-mono">{t.correctCount}: <span className="text-emerald-400/80">{s.correct}</span></span>
                         </div>
                       </div>
                       <div className="flex flex-col items-end">
-                        <span className="text-sm text-white/30 uppercase tracking-widest font-mono">答對率</span>
+                        <span className="text-sm text-white/30 uppercase tracking-widest font-mono">{t.accuracy}</span>
                         <div className="flex items-baseline gap-1">
                           <span className="text-3xl font-black font-mono text-orange-400">{rate}</span>
                           <span className="text-sm font-bold text-orange-400/60">%</span>
@@ -803,19 +843,17 @@ const App: React.FC = () => {
               <div className="mt-8 flex justify-center">
                 <button 
                   onClick={() => {
-                    if (confirm('確定要清除所有學習進度嗎？')) {
-                      setStats({
-                        '初學': { attempted: 0, correct: 0 },
-                        '基礎': { attempted: 0, correct: 0 },
-                        '中階': { attempted: 0, correct: 0 },
-                        '高階': { attempted: 0, correct: 0 },
-                        '極限': { attempted: 0, correct: 0 },
+                    if (confirm(t.clearStatsConfirm)) {
+                      const newStats: any = {};
+                      LEVELS.filter(l => l.id !== '全部').forEach(l => {
+                        newStats[l.id] = { attempted: 0, correct: 0 };
                       });
+                      setStats(newStats);
                     }
                   }}
                   className="text-sm text-white/20 hover:text-red-400 uppercase tracking-[0.2em] font-mono transition-colors"
                 >
-                  清除所有統計數據
+                  {t.clearStats}
                 </button>
               </div>
             </motion.div>
@@ -844,7 +882,7 @@ const App: React.FC = () => {
                   <div className="bg-orange-500/20 p-2 rounded-xl">
                     <LogIn className="w-6 h-6 text-orange-500" />
                   </div>
-                  <h2 className="text-2xl font-bold">{authMode === 'login' ? '會員登入' : '註冊帳號'}</h2>
+                  <h2 className="text-2xl font-bold">{authMode === 'login' ? t.login : t.register}</h2>
                 </div>
                 <button 
                   onClick={() => setShowAuthModal(false)}
@@ -857,7 +895,7 @@ const App: React.FC = () => {
               <form onSubmit={handleAuth} className="space-y-4">
                 {authMode === 'register' && (
                   <div className="space-y-2">
-                    <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">使用者名稱</label>
+                    <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.username}</label>
                     <div className="relative">
                       <UserIconLucide className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
                       <input 
@@ -865,14 +903,14 @@ const App: React.FC = () => {
                         required
                         value={displayName}
                         onChange={(e) => setDisplayName(e.target.value)}
-                        placeholder="您的名稱"
+                        placeholder={t.usernamePlaceholder}
                         className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-orange-500/50 transition-colors"
                       />
                     </div>
                   </div>
                 )}
                 <div className="space-y-2">
-                  <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">電子郵件</label>
+                  <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.email}</label>
                   <div className="relative">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
                     <input 
@@ -886,7 +924,7 @@ const App: React.FC = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">密碼</label>
+                  <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.password}</label>
                   <div className="relative">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
                     <input 
@@ -909,7 +947,7 @@ const App: React.FC = () => {
 
                 {authMode === 'register' && (
                   <div className="space-y-2">
-                    <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">確認密碼</label>
+                    <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.confirmPassword}</label>
                     <div className="relative">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
                       <input 
@@ -938,7 +976,7 @@ const App: React.FC = () => {
                   {isAuthProcessing ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    authMode === 'login' ? '登入' : '註冊'
+                    authMode === 'login' ? t.loginBtn : t.registerBtn
                   )}
                 </button>
 
@@ -952,7 +990,7 @@ const App: React.FC = () => {
                     }}
                     className="text-sm text-white/40 hover:text-white transition-colors"
                   >
-                    {authMode === 'login' ? '還沒有帳號？立即註冊' : '已有帳號？返回登入'}
+                    {authMode === 'login' ? t.noAccount : t.hasAccount}
                   </button>
                 </div>
               </form>
