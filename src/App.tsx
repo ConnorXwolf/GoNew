@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  BookOpen, 
   ChevronLeft, 
   ChevronRight, 
   RotateCcw, 
@@ -468,8 +467,13 @@ const App: React.FC = () => {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-white/5 p-3 sm:p-6 flex justify-between items-center bg-black/50 backdrop-blur-xl">
         <div className="flex items-center gap-2 sm:gap-4">
-          <div className="bg-gradient-to-br from-orange-400 to-orange-600 p-2 sm:p-2.5 rounded-xl shadow-lg shadow-orange-500/20">
-            <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-black" />
+          <div className="bg-gradient-to-br from-zinc-700 to-zinc-900 p-0.5 rounded-xl shadow-lg shadow-black/40 overflow-hidden">
+            <img 
+              src="https://lh3.googleusercontent.com/d/19xCTTWs6febeENzNvmf8snJNdr2k96s1" 
+              alt="GoMemo Logo" 
+              className="w-8 h-8 sm:w-10 sm:h-10 object-cover rounded-lg"
+              referrerPolicy="no-referrer"
+            />
           </div>
           <div className="hidden md:block">
             <h1 className="text-lg sm:text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">{t.title}</h1>
@@ -623,7 +627,7 @@ const App: React.FC = () => {
                   exit={{ opacity: 0, scale: 0.9, y: -10 }}
                   className="flex items-center gap-2 sm:gap-4 bg-orange-500 text-black px-4 sm:px-6 py-1.5 sm:py-2 rounded-2xl shadow-xl shadow-orange-500/20 border border-white/20"
                 >
-                  <Brain className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" />
+                  <Brain className="w-5 h-5 sm:w-6 sm:h-6 rounded-lg object-cover animate-pulse" />
                   <div className="flex flex-col">
                     <span className="text-[10px] sm:text-sm uppercase font-black tracking-widest leading-none opacity-60">{t.memorizing}</span>
                     <span className="text-lg sm:text-xl font-mono font-black tabular-nums leading-none">{memoryTimer}s</span>
@@ -638,7 +642,7 @@ const App: React.FC = () => {
                   exit={{ opacity: 0, scale: 0.9, y: -10 }}
                   className="flex items-center gap-2 sm:gap-4 bg-blue-500 text-white px-4 sm:px-6 py-1.5 sm:py-2 rounded-2xl shadow-xl shadow-blue-500/20 border border-white/20"
                 >
-                  <Brain className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <Brain className="w-5 h-5 sm:w-6 sm:h-6 rounded-lg object-cover" />
                   <div className="flex flex-col">
                     <span className="text-[10px] sm:text-sm uppercase font-black tracking-widest leading-none opacity-60">{t.recallMode}</span>
                     <span className="text-[10px] sm:text-sm font-black uppercase tracking-widest leading-none">{t.inProgress}</span>
@@ -662,6 +666,21 @@ const App: React.FC = () => {
                     {t.exit}
                   </span>
                 </button>
+              )}
+
+              {/* Attempts Display - Top Right Above Board (Mobile Only) */}
+              {status !== 'idle' && selectedLevel !== '極限' && (
+                <div className="absolute -top-14 right-0 z-30 flex flex-col items-end sm:hidden">
+                  <span className="text-[10px] text-white/30 uppercase font-mono tracking-widest">{t.remainingAttempts}</span>
+                  <div className="flex gap-1 mt-1">
+                    {[...Array(3)].map((_, i) => (
+                      <div 
+                        key={i} 
+                        className={`w-1.5 h-1.5 rounded-full ${i < attempts ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'bg-white/10'}`} 
+                      />
+                    ))}
+                  </div>
+                </div>
               )}
 
               {/* Board Container with Hardware feel */}
