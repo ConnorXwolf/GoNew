@@ -265,7 +265,6 @@ function GameContent() {
   const [peekTimeLeft, setPeekTimeLeft] = useState(0);
   const [hasPeeked, setHasPeeked] = useState(false);
   const [lastProblemId, setLastProblemId] = useState<string | null>(null);
-  const [userMoves, setUserMoves] = useState<{x: number, y: number, color: number}[]>([]);
 
   // Stats & Achievements
   const [stats, setStats] = useState<UserStats>(DEFAULT_STATS);
@@ -468,7 +467,6 @@ function GameContent() {
     setIsPeeking(false);
     setPeekTimeLeft(0);
     setHasPeeked(false);
-    setUserMoves([]);
   };
 
   const handleStartGame = (levelKey: string) => {
@@ -516,35 +514,6 @@ function GameContent() {
         }
       }
       if (!isCorrect) break;
-    }
-
-    // Extreme mode: Check move sequence
-    if (isCorrect && currentLevel.id === 'extreme') {
-      // Get all problem stones and their move numbers
-      const problemStones: {x: number, y: number, move: number}[] = [];
-      for (let y = 0; y < currentLevel.size; y++) {
-        for (let x = 0; x < currentLevel.size; x++) {
-          const pStone = problemBoard[y][x];
-          if (pStone !== 0) {
-            problemStones.push({ x, y, move: Math.floor(pStone / 10) });
-          }
-        }
-      }
-      
-      // Sort problem stones by move number
-      problemStones.sort((a, b) => a.move - b.move);
-
-      // Check if user moves match the sequence
-      if (userMoves.length !== problemStones.length) {
-        isCorrect = false;
-      } else {
-        for (let i = 0; i < problemStones.length; i++) {
-          if (userMoves[i].x !== problemStones[i].x || userMoves[i].y !== problemStones[i].y) {
-            isCorrect = false;
-            break;
-          }
-        }
-      }
     }
 
     if (isCorrect) {
@@ -886,10 +855,6 @@ function GameContent() {
                           <div className="w-5 h-5 rounded-full bg-stone-200 dark:bg-stone-700 flex items-center justify-center text-[10px] font-bold shrink-0 text-stone-600 dark:text-stone-300">3</div>
                           <p>{t.rule3}</p>
                         </li>
-                        <li className="flex gap-3">
-                          <div className="w-5 h-5 rounded-full bg-stone-200 dark:bg-stone-700 flex items-center justify-center text-[10px] font-bold shrink-0 text-stone-600 dark:text-stone-300">4</div>
-                          <p>{t.rule4}</p>
-                        </li>
                       </ul>
                     </div>
                   </div>
@@ -916,7 +881,7 @@ function GameContent() {
                 <Progress value={(timeLeft / 30) * 100} className="w-full mb-6 sm:mb-8 h-1 sm:h-1.5 bg-stone-100 dark:bg-stone-800" />
                 
                 <div className="bg-stone-50 dark:bg-stone-800 p-2 sm:p-4 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-inner w-full flex justify-center">
-                  <GoBoard size={currentLevel.size} boardState={problemBoard} interactive={false} showMoveNumbers={true} />
+                  <GoBoard size={currentLevel.size} boardState={problemBoard} interactive={false} />
                 </div>
                 
                 <Button
@@ -950,7 +915,6 @@ function GameContent() {
                     size={currentLevel.size}
                     boardState={isPeeking ? problemBoard : userBoard}
                     interactive={!isPeeking}
-                    showMoveNumbers={isPeeking}
                     onIntersectionClick={(x, y) => {
                       if (!userBoard[y]) return;
                       const newBoard = [...userBoard];
@@ -958,17 +922,6 @@ function GameContent() {
                       const oldColor = newBoard[y][x];
                       newBoard[y][x] = selectedTool;
                       setUserBoard(newBoard);
-
-                      if (selectedTool !== 0) {
-                        if (oldColor === 0) {
-                          setUserMoves([...userMoves, { x, y, color: selectedTool }]);
-                        } else {
-                          const filtered = userMoves.filter(m => !(m.x === x && m.y === y));
-                          setUserMoves([...filtered, { x, y, color: selectedTool }]);
-                        }
-                      } else {
-                        setUserMoves(userMoves.filter(m => !(m.x === x && m.y === y)));
-                      }
                     }}
                   />
                 </div>
@@ -1092,19 +1045,7 @@ function GameContent() {
                   <span className="font-black text-stone-900 dark:text-stone-100 text-4xl">{score}</span>
                 </div>
 
-                <div className="mb-10 w-full max-w-sm flex flex-col gap-6">
-                  <div className="bg-stone-50 dark:bg-stone-800 p-6 rounded-2xl border border-stone-100 dark:border-stone-700">
-                    <p className="text-xs font-bold mb-4 text-stone-400 dark:text-stone-500 uppercase tracking-widest flex items-center justify-center gap-2">
-                      {t.correctAnswerComparison}
-                    </p>
-                    <GoBoard
-                      size={currentLevel.size}
-                      boardState={problemBoard}
-                      interactive={false}
-                      showMoveNumbers={true}
-                    />
-                  </div>
-
+                <div className="mb-10 w-full max-w-sm">
                   <div className="bg-stone-50 dark:bg-stone-800 p-6 rounded-2xl border border-stone-100 dark:border-stone-700">
                     <p className="text-xs font-bold mb-4 text-stone-400 dark:text-stone-500 uppercase tracking-widest flex items-center justify-center gap-2">
                       {t.yourAnswer}
@@ -1115,7 +1056,6 @@ function GameContent() {
                       interactive={false}
                       showErrors={true}
                       problemBoard={problemBoard}
-                      showMoveNumbers={currentLevel.id === 'extreme'}
                     />
                   </div>
                 </div>
