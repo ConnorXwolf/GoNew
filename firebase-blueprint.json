@@ -1,58 +1,42 @@
 {
   "entities": {
-    "User": {
-      "title": "User",
-      "description": "User profile and progress tracking",
+    "UserStats": {
+      "title": "UserStats",
+      "description": "User's learning progress statistics",
       "type": "object",
       "properties": {
         "uid": { "type": "string", "description": "The user's unique ID" },
         "email": { "type": "string", "format": "email", "description": "The user's email address" },
         "displayName": { "type": "string", "description": "The user's display name" },
-        "photoURL": { "type": "string", "description": "The user's profile picture URL" },
-        "solvedProblems": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "List of IDs of problems solved by the user"
-        },
         "stats": {
           "type": "object",
+          "description": "Mapping of difficulty levels to stats",
           "properties": {
-            "totalPlayed": { "type": "integer", "description": "Total number of games played" },
-            "totalCorrect": { "type": "integer", "description": "Total number of correct answers" },
-            "maxStreak": { "type": "integer", "description": "Highest streak achieved" },
-            "lastSolvedDate": { "type": "string", "format": "date-time", "description": "Last time the user solved a problem" },
-            "levelPlays": { "type": "object", "description": "Total plays per level" },
-            "levelCorrect": { "type": "object", "description": "Total correct per level" },
-            "levelMaxStreak": { "type": "object", "description": "Max streak per level" },
-            "levelCurrentStreak": { "type": "object", "description": "Current streak per level" }
+            "初學": { "$ref": "LevelStat" },
+            "基礎": { "$ref": "LevelStat" },
+            "中階": { "$ref": "LevelStat" },
+            "高階": { "$ref": "LevelStat" },
+            "極限": { "$ref": "LevelStat" }
           }
         },
-        "achievements": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "List of achievement IDs unlocked by the user"
-        }
+        "lastUpdated": { "type": "string", "format": "date-time", "description": "Last sync time" }
       },
-      "required": ["uid", "email", "solvedProblems", "stats", "achievements"]
+      "required": ["uid", "stats"]
     },
-    "Nickname": {
-      "title": "Nickname",
-      "description": "Nickname mapping to user ID to ensure uniqueness",
+    "LevelStat": {
+      "title": "LevelStat",
       "type": "object",
       "properties": {
-        "uid": { "type": "string", "description": "The user ID associated with this nickname" }
+        "attempted": { "type": "integer" },
+        "correct": { "type": "integer" }
       },
-      "required": ["uid"]
+      "required": ["attempted", "correct"]
     }
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": "User",
-      "description": "User profiles and progress"
-    },
-    "/nicknames/{nickname}": {
-      "schema": "Nickname",
-      "description": "Mapping of nicknames to user IDs"
+    "/userStats/{userId}": {
+      "schema": "UserStats",
+      "description": "User learning progress"
     }
   }
 }

@@ -1,1101 +1,967 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import * as React from 'react';
-import { useState, useEffect, useCallback, Component as ReactComponent } from 'react';
-import { AlertCircle, CheckCircle2, X, Trophy, TrendingUp, Award, ChevronRight, LogIn, LogOut, User as UserIcon, Info, Settings, Moon, Sun, Languages } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { 
+  BookOpen, 
+  ChevronLeft, 
+  ChevronRight, 
+  RotateCcw, 
+  CheckCircle2, 
+  XCircle,
+  Brain,
+  Grid3X3,
+  Target,
+  Trophy,
+  Eraser,
+  Circle,
+  BarChart3,
+  LogIn,
+  LogOut,
+  User as UserIconLucide,
+  Cloud,
+  Eye,
+  EyeOff,
+  Mail,
+  Lock,
+  Loader2
+} from 'lucide-react';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { doc, onSnapshot, updateDoc, increment } from 'firebase/firestore';
-import { toast, Toaster } from 'sonner';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { 
+  auth, 
+  db, 
+  logout, 
+  handleFirestoreError, 
+  OperationType,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile
+} from './firebase';
 import { GoBoard } from './components/GoBoard';
-import { ErrorBoundary } from './components/ErrorBoundary';
-import { LEVELS, LEVEL_ORDER, Level, generateProblem, UserStats, DEFAULT_STATS, getAchievements } from './lib/gameLogic';
-import { auth, logout, db, handleFirestoreError, OperationType, registerWithEmail, loginWithEmail, resetPassword } from './lib/firebase';
-import { translations, Language } from './lib/i18n';
+import { PROBLEMS as DEFAULT_PROBLEMS } from './constants';
+import { Problem, Stone } from './types';
 
-// shadcn UI components
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Separator } from '@/components/ui/separator';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
-import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@/components/ui/dropdown-menu';
+const QUADRANTS = ['全部', '左上', '右上', '左下', '右下'];
+const LEVELS = ['全部', '初學', '基礎', '中階', '高階', '極限'];
 
-type GameState = 'menu' | 'memorize' | 'recall' | 'result' | 'gameover';
-
-function AuthModal({ lang }: { lang: Language }) {
-  const t = translations[lang];
-  const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+const App: React.FC = () => {
+  const [allProblems] = useState<Problem[]>(DEFAULT_PROBLEMS);
+  const [filteredProblems, setFilteredProblems] = useState<Problem[]>([]);
+  const [selectedQuadrant, setSelectedQuadrant] = useState('全部');
+  const [selectedLevel, setSelectedLevel] = useState('初學');
+  const [currentProblemIndex, setCurrentProblemIndex] = useState(0);
+  const [stones, setStones] = useState<Stone[]>([]);
+  const [userStones, setUserStones] = useState<Stone[]>([]);
+  const [selectedTool, setSelectedTool] = useState<'black' | 'white' | 'eraser'>('black');
+  const [lastMove, setLastMove] = useState<Stone | undefined>();
+  const [status, setStatus] = useState<'idle' | 'memorizing' | 'placing' | 'correct' | 'wrong'>('idle');
+  const [showExplanation, setShowExplanation] = useState(false);
+  const [score, setScore] = useState(0);
+  const [memoryTimer, setMemoryTimer] = useState(0);
+  const [attempts, setAttempts] = useState(3);
+  const [peekUsed, setPeekUsed] = useState(false);
+  const [showStats, setShowStats] = useState(false);
+  const [hasAttemptedCurrent, setHasAttemptedCurrent] = useState(false);
+  const [hasWonCurrent, setHasWonCurrent] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [name, setName] = useState('');
-  const [isResetMode, setIsResetMode] = useState(false);
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    try {
-      await loginWithEmail(email, password);
-      toast.success(t.loginSuccess);
-      setIsOpen(false);
-    } catch (error: any) {
-      toast.error(t.loginFail, { description: error.message });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (password !== confirmPassword) {
-      toast.error(t.passwordsDoNotMatch);
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      await registerWithEmail(email, password, name);
-      toast.success(t.registerSuccess);
-      setIsOpen(false);
-    } catch (error: any) {
-      toast.error(t.registerFail, { description: error.message });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    try {
-      await resetPassword(email);
-      toast.success(t.resetEmailSent);
-      setIsResetMode(false);
-    } catch (error: any) {
-      toast.error(t.resetEmailFail, { description: error.message });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      setIsOpen(open);
-      if (!open) setIsResetMode(false);
-    }}>
-      <DialogTrigger
-        render={
-          <Button variant="outline" size="sm" className="gap-2 border-stone-300 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800">
-            <LogIn className="w-4 h-4" /> {t.login} / {t.register}
-          </Button>
-        }
-      />
-      <DialogContent className="sm:max-w-[400px]">
-        <DialogHeader className="flex flex-col items-center">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-stone-800 to-stone-600 shadow-md border border-stone-900"></div>
-            <span className="text-3xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">GoMemo</span>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-white to-stone-200 shadow-md border border-stone-300"></div>
-          </div>
-          {isResetMode && (
-            <DialogTitle className="text-2xl font-bold text-center">
-              {t.resetPassword}
-            </DialogTitle>
-          )}
-          <DialogDescription className="text-center">
-            {isResetMode ? t.email : t.loginDesc}
-          </DialogDescription>
-        </DialogHeader>
-        
-        {isResetMode ? (
-          <form onSubmit={handleResetPassword} className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label htmlFor="reset-email">{t.email}</Label>
-              <Input 
-                id="reset-email" 
-                type="email" 
-                placeholder="example@mail.com" 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required 
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? t.processing : t.resetPassword}
-            </Button>
-            <Button 
-              type="button" 
-              variant="ghost" 
-              className="w-full text-xs" 
-              onClick={() => setIsResetMode(false)}
-            >
-              {t.backToLogin}
-            </Button>
-          </form>
-        ) : (
-          <Tabs defaultValue="login" className="w-full mt-4">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="login">{t.login}</TabsTrigger>
-              <TabsTrigger value="register">{t.register}</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">{t.email}</Label>
-                  <Input 
-                    id="email" 
-                    type="email" 
-                    placeholder="example@mail.com" 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="password">{t.password}</Label>
-                    <Button 
-                      type="button" 
-                      variant="link" 
-                      className="px-0 font-normal text-xs h-auto"
-                      onClick={() => setIsResetMode(true)}
-                    >
-                      {t.forgotPassword}
-                    </Button>
-                  </div>
-                  <Input 
-                    id="password" 
-                    type="password" 
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required 
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? t.processing : t.login}
-                </Button>
-              </form>
-            </TabsContent>
-            
-            <TabsContent value="register">
-              <form onSubmit={handleRegister} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="reg-name">{t.nickname}</Label>
-                  <Input 
-                    id="reg-name" 
-                    type="text" 
-                    placeholder={t.nicknamePlaceholder} 
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="reg-email">{t.email}</Label>
-                  <Input 
-                    id="reg-email" 
-                    type="email" 
-                    placeholder="example@mail.com" 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="reg-password">{t.password}</Label>
-                  <Input 
-                    id="reg-password" 
-                    type="password" 
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="reg-confirm-password">{t.confirmPassword}</Label>
-                  <Input 
-                    id="reg-confirm-password" 
-                    type="password" 
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required 
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? t.processing : t.register}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function GameContent() {
-  const [user, loading, authError] = useAuthState(auth);
-  const [gameState, setGameState] = useState<GameState>('menu');
-  const [currentLevel, setCurrentLevel] = useState<Level | null>(null);
-  const [currentLevelKey, setCurrentLevelKey] = useState<string | null>(null);
-  const [currentStoneCount, setCurrentStoneCount] = useState<number>(0);
+  const [displayName, setDisplayName] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [isAuthProcessing, setIsAuthProcessing] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   
-  const [score, setScore] = useState(0);
-  const [streak, setStreak] = useState(0);
-  const [attemptsLeft, setAttemptsLeft] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(30);
-  const [problemBoard, setProblemBoard] = useState<number[][]>([]);
-  const [userBoard, setUserBoard] = useState<number[][]>([]);
-  const [selectedTool, setSelectedTool] = useState<number>(1); // 1: black, 2: white, 0: eraser
-  const [showErrors, setShowErrors] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [isPeeking, setIsPeeking] = useState(false);
-  const [peekTimeLeft, setPeekTimeLeft] = useState(0);
-  const [hasPeeked, setHasPeeked] = useState(false);
-  const [lastProblemId, setLastProblemId] = useState<string | null>(null);
-
-  // Stats & Achievements
-  const [stats, setStats] = useState<UserStats>(DEFAULT_STATS);
-  const [unlockedNotifs, setUnlockedNotifs] = useState<string[]>([]);
-  const [showStats, setShowStats] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
-
-  // New state for i18n and theme
-  const [lang, setLang] = useState<Language>(() => {
-    const saved = localStorage.getItem('goMemoLang');
-    return (saved as Language) || 'en';
-  });
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    const saved = localStorage.getItem('goMemoTheme');
-    return (saved as 'light' | 'dark') || 'light';
+  const [user, authLoading] = useAuthState(auth);
+  
+  const [stats, setStats] = useState<Record<string, { attempted: number, correct: number }>>(() => {
+    const saved = localStorage.getItem('gomemo_stats_v3');
+    return saved ? JSON.parse(saved) : {
+      '初學': { attempted: 0, correct: 0 },
+      '基礎': { attempted: 0, correct: 0 },
+      '中階': { attempted: 0, correct: 0 },
+      '高階': { attempted: 0, correct: 0 },
+      '極限': { attempted: 0, correct: 0 },
+    };
   });
 
-  const t = translations[lang];
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    localStorage.setItem('goMemoLang', lang);
-  }, [lang]);
-
-  useEffect(() => {
-    localStorage.setItem('goMemoTheme', theme);
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [theme]);
-
-  // Sync with Firestore
-  useEffect(() => {
-    if (!user) {
-      // Load from localStorage for guests
-      const saved = localStorage.getItem('goMemoryStats');
-      if (saved) {
+    localStorage.setItem('gomemo_stats_v3', JSON.stringify(stats));
+    
+    // Sync to Firestore if logged in
+    if (user && !authLoading) {
+      const syncToCloud = async () => {
+        setIsSyncing(true);
         try {
-          const parsed = JSON.parse(saved);
-          setStats({
-            ...DEFAULT_STATS,
-            ...parsed,
-          });
-        } catch (e) {
-          console.error('Failed to parse local stats', e);
+          const statsRef = doc(db, 'userStats', user.uid);
+          await setDoc(statsRef, {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            stats: stats,
+            lastUpdated: serverTimestamp()
+          }, { merge: true });
+        } catch (error) {
+          console.error("Sync failed:", error);
+        } finally {
+          setIsSyncing(false);
         }
+      };
+      
+      // Debounce sync
+      const timeoutId = setTimeout(syncToCloud, 2000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [stats, user, authLoading]);
+
+  // Fetch stats from Firestore on login
+  useEffect(() => {
+    if (user && !authLoading) {
+      const fetchStats = async () => {
+        try {
+          const statsRef = doc(db, 'userStats', user.uid);
+          const docSnap = await getDoc(statsRef);
+          
+          if (docSnap.exists()) {
+            const cloudStats = docSnap.data().stats;
+            // Merge logic: take the higher numbers (or just overwrite if cloud is source of truth)
+            setStats(cloudStats);
+          }
+        } catch (error) {
+          handleFirestoreError(error, OperationType.GET, `userStats/${user.uid}`);
+        }
+      };
+      fetchStats();
+    }
+  }, [user, authLoading]);
+
+  useEffect(() => {
+    const filtered = allProblems.filter(p => {
+      const qMatch = selectedQuadrant === '全部' || p.quadrant === selectedQuadrant;
+      
+      if (selectedLevel === '全部') return qMatch;
+
+      if (selectedLevel === '初學') {
+        const totalStones = p.initialStones.length + p.solution.length;
+        return qMatch && p.level === '基礎' && totalStones < 12;
+      }
+      
+      if (selectedLevel === '基礎') {
+        const totalStones = p.initialStones.length + p.solution.length;
+        return qMatch && p.level === '基礎' && totalStones >= 12;
+      }
+
+      return qMatch && p.level === selectedLevel;
+    });
+    // Shuffle the filtered problems
+    const shuffled = [...filtered].sort(() => Math.random() - 0.5);
+    setFilteredProblems(shuffled);
+    setCurrentProblemIndex(0);
+  }, [selectedQuadrant, selectedLevel, allProblems]);
+
+  const currentProblem = filteredProblems[currentProblemIndex];
+
+  const resetProblem = useCallback(() => {
+    if (!currentProblem) return;
+    setStones([]);
+    setUserStones([]);
+    setLastMove(undefined);
+    setStatus('idle');
+    setShowExplanation(false);
+    setMemoryTimer(0);
+    setAttempts(selectedLevel === '極限' ? 1 : 3);
+    setPeekUsed(false);
+    setHasAttemptedCurrent(false);
+    setHasWonCurrent(false);
+  }, [currentProblem, selectedLevel]);
+
+  useEffect(() => {
+    resetProblem();
+  }, [resetProblem]);
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    setIsAuthProcessing(true);
+    try {
+      if (authMode === 'register') {
+        if (password !== confirmPassword) {
+          setAuthError('兩次輸入的密碼不一致');
+          setIsAuthProcessing(false);
+          return;
+        }
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(userCredential.user, { displayName });
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+      setShowAuthModal(false);
+      setEmail('');
+      setPassword('');
+      setConfirmPassword('');
+      setDisplayName('');
+    } catch (err: any) {
+      setAuthError(err.message || '認證失敗');
+    } finally {
+      setIsAuthProcessing(false);
+    }
+  };
+
+  const startTraining = () => {
+    if (!currentProblem) return;
+    
+    if (!hasAttemptedCurrent && selectedLevel !== '全部') {
+      setStats(prev => ({
+        ...prev,
+        [selectedLevel]: {
+          ...prev[selectedLevel],
+          attempted: prev[selectedLevel].attempted + 1
+        }
+      }));
+      setHasAttemptedCurrent(true);
+    }
+
+    // Phase 1: Memorization
+    setStatus('memorizing');
+    setStones([...currentProblem.initialStones, ...currentProblem.solution]);
+    setMemoryTimer(30);
+    
+    if (timerRef.current) clearInterval(timerRef.current);
+    
+    timerRef.current = setInterval(() => {
+      setMemoryTimer(prev => {
+        if (prev <= 1) {
+          if (timerRef.current) clearInterval(timerRef.current);
+          // Phase 2: Placing
+          setStatus('placing');
+          setStones([]);
+          setUserStones([]);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const startRecallNow = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setStatus('placing');
+    setStones([]);
+    setUserStones([]);
+    setMemoryTimer(0);
+  };
+
+  const peekProblem = () => {
+    if (status !== 'placing' || peekUsed || selectedLevel === '極限') return;
+    
+    setPeekUsed(true);
+    const currentUserStones = [...userStones];
+    setStatus('memorizing');
+    setStones([...currentProblem!.initialStones, ...currentProblem!.solution]);
+    setMemoryTimer(10);
+    
+    if (timerRef.current) clearInterval(timerRef.current);
+    
+    timerRef.current = setInterval(() => {
+      setMemoryTimer(prev => {
+        if (prev <= 1) {
+          if (timerRef.current) clearInterval(timerRef.current);
+          setStatus('placing');
+          setStones(currentUserStones);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const handleIntersectionClick = (x: number, y: number) => {
+    if (!currentProblem || status !== 'placing') return;
+
+    const existingIndex = userStones.findIndex(s => s.x === x && s.y === y);
+    
+    if (selectedTool === 'eraser') {
+      if (existingIndex >= 0) {
+        const stoneToErase = userStones[existingIndex];
+        if (lastMove?.x === stoneToErase.x && lastMove?.y === stoneToErase.y) {
+          setLastMove(undefined);
+        }
+        const newStones = [...userStones];
+        newStones.splice(existingIndex, 1);
+        setUserStones(newStones);
+        setStones(newStones);
       }
       return;
     }
 
-        // Subscribe to Firestore updates
-        const userRef = doc(db, 'users', user.uid);
-        const unsubscribe = onSnapshot(userRef, (snapshot) => {
-          if (snapshot.exists()) {
-            const data = snapshot.data();
-            // Merge Firestore stats with local structure
-            setStats(prev => ({
-              ...prev,
-              totalPlayed: data.stats?.totalPlayed || 0,
-              totalCorrect: data.stats?.totalCorrect || 0,
-              maxStreak: data.stats?.maxStreak || 0,
-              levelPlays: data.stats?.levelPlays || {},
-              levelCorrect: data.stats?.levelCorrect || {},
-              levelMaxStreak: data.stats?.levelMaxStreak || {},
-              levelCurrentStreak: data.stats?.levelCurrentStreak || {},
-              achievements: data.achievements || [],
-            }));
-          }
-        }, (error) => {
-          handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
-        });
-
-    return () => unsubscribe();
-  }, [user]);
-
-  // Save to localStorage (for guests)
-  useEffect(() => {
-    if (!user) {
-      localStorage.setItem('goMemoryStats', JSON.stringify(stats));
+    const newMove: Stone = { x, y, color: selectedTool };
+    if (existingIndex >= 0) {
+      const newStones = [...userStones];
+      newStones[existingIndex] = newMove;
+      setUserStones(newStones);
+      setStones(newStones);
+    } else {
+      const newStones = [...userStones, newMove];
+      setUserStones(newStones);
+      setStones(newStones);
+      setLastMove(newMove);
     }
-  }, [stats, user]);
+  };
 
-  const syncToFirestore = useCallback(async (updates: any) => {
-    if (!user) return;
-    setIsSyncing(true);
-    try {
-      const userRef = doc(db, 'users', user.uid);
-      await updateDoc(userRef, updates);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
-    } finally {
-      setIsSyncing(false);
-    }
-  }, [user]);
+  const checkAnswer = () => {
+    if (!currentProblem) return;
 
-  useEffect(() => {
-    const hasReset = localStorage.getItem('manual_reset_20260325');
-    if (!hasReset) {
-      const performReset = async () => {
-        const resetStats = { ...DEFAULT_STATS };
-        setStats(resetStats);
-        localStorage.setItem('goMemoryStats', JSON.stringify(resetStats));
-        
-        if (user) {
-          try {
-            const userRef = doc(db, 'users', user.uid);
-            await updateDoc(userRef, {
-              stats: {
-                totalPlayed: 0,
-                totalCorrect: 0,
-                maxStreak: 0,
-                lastSolvedDate: new Date().toISOString(),
-                levelPlays: {},
-                levelCorrect: {},
-                levelMaxStreak: {},
-                levelCurrentStreak: {}
-              },
-              achievements: []
-            });
-          } catch (error) {
-            console.error("Manual reset failed:", error);
-          }
-        }
-        localStorage.setItem('manual_reset_20260325', 'true');
-        toast.success("Records have been reset.");
-      };
-      performReset();
-    }
-  }, [user]);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (gameState === 'memorize' && timeLeft > 0) {
-      timer = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
-      }, 1000);
-    } else if (gameState === 'memorize' && timeLeft === 0) {
-      setGameState('recall');
-    }
-    return () => clearInterval(timer);
-  }, [gameState, timeLeft]);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (isPeeking && peekTimeLeft > 0) {
-      timer = setInterval(() => {
-        setPeekTimeLeft((prev) => prev - 1);
-      }, 1000);
-    } else if (isPeeking && peekTimeLeft === 0) {
-      setIsPeeking(false);
-    }
-    return () => clearInterval(timer);
-  }, [isPeeking, peekTimeLeft]);
-
-  const checkAchievements = (newStats: UserStats, levelId: string) => {
-    const newlyUnlocked: string[] = [];
-    const checkAndUnlock = (id: string, condition: boolean) => {
-      if (!newStats.achievements.includes(id) && condition) {
-        newStats.achievements.push(id);
-        newlyUnlocked.push(id);
-      }
-    };
-
-    const plays = newStats.levelPlays[levelId] || 0;
-    const corrects = newStats.levelCorrect[levelId] || 0;
-
-    const milestones = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+    const targetStones = [...currentProblem.initialStones, ...currentProblem.solution];
     
-    // Per-level milestones
-    milestones.forEach(m => {
-      checkAndUnlock(`${levelId}_play_${m}`, plays >= m);
-      checkAndUnlock(`${levelId}_correct_${m}`, corrects >= m);
-    });
-
-    if (newlyUnlocked.length > 0) {
-      newlyUnlocked.forEach(id => {
-        const ach = getAchievements(lang).find(a => a.id === id);
-        if (ach) {
-          toast.success(`${t.unlockedAchievement}：${ach.name}`, {
-            description: ach.description,
-            icon: <span className="text-xl">{ach.icon}</span>,
-          });
-        }
-      });
-    }
-    return newStats;
-  };
-
-  const startProblem = (levelKey: string, level: Level, stoneCount: number) => {
-    const newProblem = generateProblem(levelKey, stoneCount, lastProblemId || undefined);
-    setProblemBoard(newProblem.board);
-    setLastProblemId(newProblem.id);
-    setUserBoard(Array(level.size).fill(null).map(() => Array(level.size).fill(0)));
-    setGameState('memorize');
-    setTimeLeft(30);
-    setAttemptsLeft(level.attempts);
-    setShowErrors(false);
-    setMessage(null);
-    setIsPeeking(false);
-    setPeekTimeLeft(0);
-    setHasPeeked(false);
-  };
-
-  const handleStartGame = (levelKey: string) => {
-    const level = LEVELS[levelKey];
-    setCurrentLevel(level);
-    setCurrentLevelKey(levelKey);
-    setScore(0);
-    setStreak(0);
-    setCurrentStoneCount(level.stones[0]);
-    startProblem(levelKey, level, level.stones[0]);
-  };
-
-  const handleNextLevel = () => {
-    if (!currentLevelKey) return;
-    const currentIndex = LEVEL_ORDER.indexOf(currentLevelKey);
-    if (currentIndex < LEVEL_ORDER.length - 1) {
-      const nextKey = LEVEL_ORDER[currentIndex + 1];
-      handleStartGame(nextKey);
-    }
-  };
-
-  const handlePeek = () => {
-    if (isPeeking || hasPeeked || (currentLevel && currentLevel.id === 'extreme')) return;
-    setIsPeeking(true);
-    setPeekTimeLeft(10);
-    setHasPeeked(true);
-  };
-
-  const handleSubmit = () => {
-    if (!currentLevel || !currentLevelKey) return;
-
-    let isCorrect = true;
-    for (let y = 0; y < currentLevel.size; y++) {
-      if (!problemBoard[y] || !userBoard[y]) {
-        isCorrect = false;
-        break;
-      }
-      for (let x = 0; x < currentLevel.size; x++) {
-        const pStone = problemBoard[y][x];
-        const uStone = userBoard[y][x];
-        const pColor = pStone === 0 ? 0 : (pStone % 10);
-        if (pColor !== uStone) {
-          isCorrect = false;
-          break;
-        }
-      }
-      if (!isCorrect) break;
-    }
+    // Check if every target stone is present in userStones and counts match
+    const isCorrect = userStones.length === targetStones.length && targetStones.every(target => 
+      userStones.some(user => user.x === target.x && user.y === target.y && user.color === target.color)
+    );
 
     if (isCorrect) {
-      const newStreak = streak + 1;
-      setStreak(newStreak);
-      
-      // New Scoring: 5 points per correct, +15 for every 3 streak
-      const streakBonus = newStreak > 0 && newStreak % 3 === 0 ? 15 : 0;
-      setScore(score + 5 + streakBonus);
-      
-      // Update Stats
-      let newStats = { ...stats };
-      newStats.totalPlayed += 1;
-      newStats.totalCorrect += 1;
-      newStats.maxStreak = Math.max(newStats.maxStreak, newStreak);
-      newStats.levelPlays[currentLevel.id] = (newStats.levelPlays[currentLevel.id] || 0) + 1;
-      newStats.levelCorrect[currentLevel.id] = (newStats.levelCorrect[currentLevel.id] || 0) + 1;
-      
-      const currentLevelStreak = (newStats.levelCurrentStreak[currentLevel.id] || 0) + 1;
-      newStats.levelCurrentStreak[currentLevel.id] = currentLevelStreak;
-      newStats.levelMaxStreak[currentLevel.id] = Math.max(newStats.levelMaxStreak[currentLevel.id] || 0, currentLevelStreak);
-      
-      newStats = checkAchievements(newStats, currentLevel.id);
-      setStats(newStats);
-
-      // Sync to Firestore if logged in
-      if (user) {
-        syncToFirestore({
-          'stats.totalPlayed': increment(1),
-          'stats.totalCorrect': increment(1),
-          'stats.maxStreak': Math.max(stats.maxStreak, newStreak),
-          'stats.lastSolvedDate': new Date().toISOString(),
-          [`stats.levelPlays.${currentLevel.id}`]: increment(1),
-          [`stats.levelCorrect.${currentLevel.id}`]: increment(1),
-          [`stats.levelCurrentStreak.${currentLevel.id}`]: currentLevelStreak,
-          [`stats.levelMaxStreak.${currentLevel.id}`]: Math.max(stats.levelMaxStreak[currentLevel.id] || 0, currentLevelStreak),
-          'achievements': newStats.achievements // Sync updated achievements
-        });
+      if (!hasWonCurrent && selectedLevel !== '全部') {
+        setStats(prev => ({
+          ...prev,
+          [selectedLevel]: {
+            ...prev[selectedLevel],
+            correct: prev[selectedLevel].correct + 1
+          }
+        }));
+        setHasWonCurrent(true);
       }
-
-      // DDA: Increase difficulty
-      const nextStones = Math.min(currentLevel.stones[1], currentStoneCount + 1);
-      setCurrentStoneCount(nextStones);
-      
-      setGameState('result');
+      setStatus('correct');
+      setScore(s => s + 100);
+      setTimeout(() => setShowExplanation(true), 500);
     } else {
-      const newAttempts = attemptsLeft - 1;
-      setAttemptsLeft(newAttempts);
-      if (newAttempts === 0) {
-        // Update Stats
-        let newStats = { ...stats };
-        newStats.totalPlayed += 1;
-        newStats.levelPlays[currentLevel.id] = (newStats.levelPlays[currentLevel.id] || 0) + 1;
-        newStats.levelCurrentStreak[currentLevel.id] = 0; // Reset level streak
-        
-        newStats = checkAchievements(newStats, currentLevel.id);
-        setStats(newStats);
-
-        // Sync to Firestore if logged in
-        if (user) {
-          syncToFirestore({
-            'stats.totalPlayed': increment(1),
-            [`stats.levelPlays.${currentLevel.id}`]: increment(1),
-            [`stats.levelCurrentStreak.${currentLevel.id}`]: 0,
-            'achievements': newStats.achievements
-          });
-        }
-
-        // DDA: Decrease difficulty
-        const nextStones = Math.max(currentLevel.stones[0], currentStoneCount - 1);
-        setCurrentStoneCount(nextStones);
-
-        setGameState('gameover');
-        setShowErrors(true);
+      const newAttempts = attempts - 1;
+      setAttempts(newAttempts);
+      
+      if (newAttempts > 0) {
+        setStatus('wrong');
+        setTimeout(() => setStatus('placing'), 1500);
       } else {
-        setMessage(`${t.wrongAnswer}！${t.remainingAttempts} ${newAttempts} ${t.times}`);
-        setTimeout(() => setMessage(null), 3000);
+        setStatus('wrong');
+        // After 3 attempts, maybe show the answer or just stay wrong
+        setTimeout(() => setShowExplanation(true), 1500);
       }
     }
   };
 
-  const isMaxDifficulty = currentLevel && currentStoneCount === currentLevel.stones[1];
-  const hasNextLevel = currentLevelKey && LEVEL_ORDER.indexOf(currentLevelKey) < LEVEL_ORDER.length - 1;
+  const nextProblem = () => {
+    if (filteredProblems.length === 0) return;
+    setCurrentProblemIndex((prev) => (prev + 1) % filteredProblems.length);
+  };
+
+  const prevProblem = () => {
+    if (filteredProblems.length === 0) return;
+    setCurrentProblemIndex((prev) => (prev - 1 + filteredProblems.length) % filteredProblems.length);
+  };
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-800 dark:text-stone-200 font-sans flex flex-col items-center py-4 sm:py-8 px-2 sm:px-4 relative overflow-x-hidden">
-      <div className="w-full max-w-2xl">
-        {/* Header */}
-        <header className="flex flex-col sm:flex-row justify-between items-center mb-6 sm:mb-8 bg-white dark:bg-stone-900 p-3 sm:p-4 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 gap-3 sm:gap-4">
-          <div className="flex items-center justify-between w-full sm:w-auto gap-2 sm:gap-4">
-            <h1 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
-              <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-br from-stone-800 to-stone-600 shadow-sm border border-stone-900"></div>
-              GoMemo
-              <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-br from-white to-stone-200 shadow-sm border border-stone-300"></div>
-            </h1>
-            
-            <div className="flex items-center gap-2">
-              {/* Auth Section */}
-              <div className="flex items-center gap-2 border-l pl-2 sm:pl-4 border-stone-200 dark:border-stone-800">
-                {loading ? (
-                  <Skeleton className="w-8 h-8 rounded-full" />
-                ) : user ? (
-                  <div className="flex items-center gap-1 sm:gap-2 group relative">
-                    <Avatar className="w-7 h-7 sm:w-8 sm:h-8 border border-stone-200 dark:border-stone-800 shadow-sm">
-                      <AvatarImage src={user.photoURL || undefined} referrerPolicy="no-referrer" />
-                      <AvatarFallback className="bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 text-[10px] sm:text-xs">
-                        {user.displayName?.charAt(0) || <UserIcon className="w-3 h-3 sm:w-4 sm:h-4" />}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="hidden md:flex flex-col items-start leading-none">
-                      <span className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate max-w-[80px]">
-                        {user.displayName || t.goEnthusiast}
-                      </span>
-                    </div>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-full text-stone-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-                      onClick={() => {
-                        logout();
-                        toast.info(t.loggedOut);
-                      }}
-                    >
-                      <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <AuthModal lang={lang} />
-                )}
-              </div>
+    <div className="min-h-screen bg-[#0a0a0a] text-white font-sans selection:bg-orange-500/30 overflow-x-hidden">
+      {/* Background Glow */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-orange-500/5 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/5 blur-[120px] rounded-full" />
+      </div>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button variant="ghost" size="icon" className="w-7 h-7 sm:w-8 sm:h-8 rounded-full text-stone-400 hover:text-stone-600 dark:hover:text-stone-300">
-                      <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    </Button>
-                  }
-                />
-                <DropdownMenuContent align="end" className="w-56">
-                  <div className="px-2 py-1.5 text-xs font-bold text-stone-400 uppercase tracking-widest">
-                    {t.settings}
-                  </div>
-                  <DropdownMenuSeparator />
-                  <div className="flex items-center justify-between px-2 py-2">
-                    <div className="flex items-center gap-2 text-sm font-medium text-stone-700 dark:text-stone-300">
-                      {theme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-                      {t.darkMode}
-                    </div>
-                    <Switch 
-                      checked={theme === 'dark'} 
-                      onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')} 
-                    />
-                  </div>
-                  <DropdownMenuSeparator />
-                  <div className="px-2 py-2 space-y-2">
-                    <div className="flex items-center gap-2 text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
-                      <Languages className="w-4 h-4" />
-                      {t.language}
-                    </div>
-                    <Select value={lang} onValueChange={(v: Language) => setLang(v)}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="zh">繁體中文</SelectItem>
-                        <SelectItem value="en">English</SelectItem>
-                        <SelectItem value="ja">日本語</SelectItem>
-                        <SelectItem value="es">Español</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b border-white/5 p-4 sm:p-6 flex justify-between items-center bg-black/50 backdrop-blur-xl">
+        <div className="flex items-center gap-4">
+          <div className="bg-gradient-to-br from-orange-400 to-orange-600 p-2.5 rounded-xl shadow-lg shadow-orange-500/20">
+            <BookOpen className="w-6 h-6 text-black" />
+          </div>
+          <div className="hidden sm:block">
+            <h1 className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">GoMemo • 棋型記憶訓練</h1>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-4 sm:gap-8">
+          <div className="h-8 w-px bg-white/10 hidden sm:block" />
+          
+          {/* Auth Button */}
+          <div className="flex items-center gap-3">
+            {authLoading ? (
+              <div className="w-8 h-8 rounded-full bg-white/5 animate-pulse" />
+            ) : user ? (
+              <div className="flex items-center gap-3 bg-white/5 pl-2 pr-4 py-1.5 rounded-full border border-white/10 group">
+                <div className="w-7 h-7 rounded-full border border-white/20 bg-orange-500/20 flex items-center justify-center">
+                  <UserIconLucide className="w-4 h-4 text-orange-400" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold text-white/60 leading-none">{user.displayName || user.email}</span>
+                  <button 
+                    onClick={() => logout()}
+                    className="text-sm text-white/30 uppercase tracking-widest hover:text-red-400 transition-colors text-left"
+                  >
+                    登出
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button 
+                onClick={() => {
+                  setAuthMode('login');
+                  setShowAuthModal(true);
+                }}
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all group"
+              >
+                <LogIn className="w-4 h-4 text-white/60 group-hover:text-white" />
+                <span className="text-sm font-bold uppercase tracking-widest text-white/60 group-hover:text-white">登入同步</span>
+              </button>
+            )}
+          </div>
+
+          <div className="h-8 w-px bg-white/10 hidden sm:block" />
+          
+          {selectedLevel !== '極限' && (
+            <div className="hidden sm:flex flex-col items-end">
+              <span className="text-sm text-white/30 uppercase font-mono tracking-widest">剩餘機會</span>
+              <div className="flex gap-1 mt-1">
+                {[...Array(3)].map((_, i) => (
+                  <div 
+                    key={i} 
+                    className={`w-2 h-2 rounded-full ${i < attempts ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'bg-white/10'}`} 
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="h-8 w-px bg-white/10 hidden sm:block" />
+          
+          <button 
+            onClick={() => setShowStats(true)}
+            className="flex flex-col items-center group transition-all relative"
+          >
+            <span className="text-sm text-white/30 uppercase font-mono tracking-widest group-hover:text-orange-400">學習進度</span>
+            <BarChart3 className="w-5 h-5 text-orange-400 mt-1 group-hover:scale-110 transition-transform" />
+            {isSyncing && (
+              <Cloud className="w-3 h-3 text-blue-400 absolute -top-1 -right-2 animate-bounce" />
+            )}
+          </button>
+
+          <div className="h-8 w-px bg-white/10 hidden sm:block" />
+          
+          <div className="hidden sm:flex flex-col items-end">
+            <span className="text-sm text-white/30 uppercase font-mono tracking-widest">總體掌握度</span>
+            <span className="text-2xl font-mono text-orange-400 tabular-nums">{score.toString().padStart(4, '0')}</span>
+          </div>
+          <div className="h-8 w-px bg-white/10 hidden sm:block" />
+          <div className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-full border border-white/10">
+            <Target className="w-4 h-4 text-blue-400" />
+            <span className="text-sm font-bold uppercase tracking-wider text-blue-400">題目 {currentProblemIndex + 1} / {filteredProblems.length}</span>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-4xl mx-auto p-4 sm:p-8 lg:p-12 flex flex-col gap-8">
+        {/* Main Content: Filters & Board */}
+        <div className="w-full flex flex-col items-center justify-start gap-8">
+          {/* Filters */}
+          <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white/5 p-4 rounded-3xl border border-white/10 backdrop-blur-md">
+            <div className="space-y-2">
+              <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">方位分區</label>
+              <div className="flex flex-wrap gap-2">
+                {QUADRANTS.map(q => (
+                  <button
+                    key={q}
+                    onClick={() => { setSelectedQuadrant(q); setCurrentProblemIndex(0); }}
+                    className={`px-3 py-1.5 rounded-xl text-sm font-bold uppercase tracking-widest transition-all ${
+                      selectedQuadrant === q 
+                        ? 'bg-orange-500 text-black shadow-lg shadow-orange-500/20' 
+                        : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white'
+                    }`}
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">難度等級</label>
+              <div className="flex flex-wrap gap-2">
+                {LEVELS.map(l => (
+                  <button
+                    key={l}
+                    onClick={() => { setSelectedLevel(l); setCurrentProblemIndex(0); }}
+                    className={`px-3 py-1.5 rounded-xl text-sm font-bold uppercase tracking-widest transition-all ${
+                      selectedLevel === l 
+                        ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' 
+                        : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white'
+                    }`}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          {gameState !== 'menu' && (
-            <div className="flex gap-2 sm:gap-3 text-[10px] sm:text-sm font-medium items-center w-full sm:w-auto justify-center sm:justify-end border-t sm:border-t-0 pt-2 sm:pt-0 border-stone-100 dark:border-stone-800">
-              <Badge variant="outline" className="bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 px-2 sm:px-3 py-0.5 sm:py-1">
-                {t.score}: <span className="text-emerald-600 font-bold ml-1">{score}</span>
-              </Badge>
-              <Badge variant="outline" className="bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 px-2 sm:px-3 py-0.5 sm:py-1">
-                {t.streak}: <span className="text-amber-600 font-bold ml-1">{streak}</span>
-              </Badge>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setGameState('menu')}
-                className="text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 h-7 sm:h-8 text-[10px] sm:text-xs"
-              >
-                {t.exit}
-              </Button>
-            </div>
-          )}
-        </header>
-
-        {/* Main Content */}
-        <Card className="border-none shadow-sm overflow-hidden bg-white dark:bg-stone-900 min-h-[500px] flex flex-col items-center justify-center relative">
-          <CardContent className="w-full p-4 sm:p-10 flex flex-col items-center">
-            {gameState === 'menu' && (
-              <div className="flex flex-col items-center w-full">
-                {showStats ? (
-                  <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-300">
-                    <div className="flex justify-between items-center mb-8">
-                      <h2 className="text-2xl font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2">
-                        <Trophy className="text-amber-500" /> {t.learningRecord}
-                      </h2>
-                      <Button variant="ghost" onClick={() => setShowStats(false)} className="text-stone-500 font-medium">
-                        {t.backToMenu}
-                      </Button>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 mb-8">
-                      <Card className="bg-stone-50 dark:bg-stone-800 border-none shadow-none text-center p-3 sm:p-4">
-                        <p className="text-stone-500 dark:text-stone-400 text-[10px] sm:text-xs font-bold mb-1 uppercase tracking-wider">{t.totalPlayed}</p>
-                        <p className="text-xl sm:text-2xl font-black text-stone-800 dark:text-stone-100">{stats.totalPlayed}</p>
-                      </Card>
-                      <Card className="bg-stone-50 dark:bg-stone-800 border-none shadow-none text-center p-3 sm:p-4">
-                        <p className="text-stone-500 dark:text-stone-400 text-[10px] sm:text-xs font-bold mb-1 uppercase tracking-wider">{t.totalCorrect}</p>
-                        <p className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400">{stats.totalCorrect}</p>
-                      </Card>
-                      <Card className="bg-stone-50 dark:bg-stone-800 border-none shadow-none text-center p-3 sm:p-4 col-span-2 sm:col-span-1">
-                        <p className="text-stone-500 dark:text-stone-400 text-[10px] sm:text-xs font-bold mb-1 uppercase tracking-wider">{t.maxStreak}</p>
-                        <p className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400">{stats.maxStreak}</p>
-                      </Card>
-                    </div>
-
-                    <h3 className="text-lg font-bold text-stone-700 dark:text-stone-200 mb-4 flex items-center gap-2">
-                      <TrendingUp className="text-emerald-500" /> {t.level} {t.learningRecord}
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
-                      {LEVEL_ORDER.map(key => {
-                        const level = LEVELS[key];
-                        const plays = stats.levelPlays[level.id] || 0;
-                        const corrects = stats.levelCorrect[level.id] || 0;
-                        const maxStreak = stats.levelMaxStreak[level.id] || 0;
-                        const winRate = plays > 0 ? Math.round((corrects / plays) * 100) : 0;
-                        
-                        return (
-                          <Card key={level.id} className="bg-stone-50 dark:bg-stone-800 border-none shadow-none p-4">
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="font-bold text-stone-800 dark:text-stone-100">{level.name(lang)}</span>
-                              <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                                {winRate}% {t.correct}
-                              </Badge>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2 text-[10px] sm:text-xs">
-                              <div>
-                                <p className="text-stone-500">{t.totalPlayed}</p>
-                                <p className="font-bold">{plays}</p>
-                              </div>
-                              <div>
-                                <p className="text-stone-500">{t.totalCorrect}</p>
-                                <p className="font-bold">{corrects}</p>
-                              </div>
-                              <div>
-                                <p className="text-stone-500">{t.maxStreak}</p>
-                                <p className="font-bold">{maxStreak}</p>
-                              </div>
-                            </div>
-                          </Card>
-                        );
-                      })}
-                    </div>
-
-                    <h3 className="text-lg font-bold text-stone-700 dark:text-stone-200 mb-4 flex items-center gap-2">
-                      <Award className="text-indigo-500" /> {t.achievements}
-                    </h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 sm:gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                      {getAchievements(lang).map(ach => {
-                        const isUnlocked = stats.achievements.includes(ach.id);
-                        return (
-                          <div key={ach.id} className={`p-2 sm:p-3 rounded-xl border flex items-center gap-2 sm:gap-3 transition-all ${isUnlocked ? 'bg-white border-amber-200 shadow-sm' : 'bg-stone-50 border-stone-100 opacity-60 grayscale'}`}>
-                            <div className="text-2xl sm:text-3xl">{ach.icon}</div>
-                            <div className="min-w-0">
-                              <div className={`font-bold text-[10px] sm:text-sm truncate ${isUnlocked ? 'text-stone-800' : 'text-stone-500'}`}>{ach.name}</div>
-                              <div className="text-[8px] sm:text-[10px] text-stone-500 leading-tight truncate">{ach.description}</div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="w-full animate-in fade-in duration-300">
-                    <div className="flex justify-between items-end mb-8">
-                      <div>
-                        <h2 className="text-2xl font-bold text-stone-800 dark:text-stone-100">{t.welcomeBack}</h2>
-                        <p className="text-stone-500 dark:text-stone-400 text-sm">{t.selectDifficulty}</p>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setShowStats(true)} 
-                        className="font-bold text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/30 bg-indigo-50/50 dark:bg-indigo-900/10 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
-                      >
-                        <TrendingUp className="w-4 h-4 mr-2" /> {t.learningRecord}
-                      </Button>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 w-full">
-                      {LEVEL_ORDER.map((key) => {
-                        const level = LEVELS[key];
-                        return (
-                          <Button
-                            key={level.id}
-                            variant="outline"
-                            onClick={() => handleStartGame(key)}
-                            className="h-auto p-4 sm:p-6 border-2 border-stone-100 dark:border-stone-800 rounded-2xl hover:border-emerald-500 dark:hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all flex flex-col items-center group relative overflow-hidden"
-                          >
-                            <span className="text-lg sm:text-xl font-bold text-stone-800 dark:text-stone-100 group-hover:text-emerald-700 dark:group-hover:text-emerald-300">
-                              {level.name(lang)}
-                            </span>
-                            <span className="text-[10px] sm:text-xs text-stone-400 dark:text-stone-500 mt-1 sm:mt-2 font-medium uppercase tracking-widest">
-                              {level.stones[0]}~{level.stones[1]} {t.stones} | {level.attempts} {t.attempts}
-                            </span>
-                            <div className="absolute bottom-0 left-0 h-1 bg-emerald-500 transition-all duration-300 w-0 group-hover:w-full"></div>
-                          </Button>
-                        );
-                      })}
-                    </div>
-                    
-                    <Separator className="my-10" />
-                    
-                    <div className="text-sm text-stone-600 dark:text-stone-400 bg-stone-50 dark:bg-stone-800 p-6 rounded-2xl w-full border border-stone-100 dark:border-stone-700">
-                      <div className="flex items-center gap-2 mb-4 text-stone-800 dark:text-stone-100">
-                        <Info className="w-4 h-4 text-indigo-500" />
-                        <p className="font-bold">{t.rulesTitle}</p>
-                      </div>
-                      <ul className="space-y-3">
-                        <li className="flex gap-3">
-                          <div className="w-5 h-5 rounded-full bg-stone-200 dark:bg-stone-700 flex items-center justify-center text-[10px] font-bold shrink-0 text-stone-600 dark:text-stone-300">1</div>
-                          <p>{t.rule1}</p>
-                        </li>
-                        <li className="flex gap-3">
-                          <div className="w-5 h-5 rounded-full bg-stone-200 dark:bg-stone-700 flex items-center justify-center text-[10px] font-bold shrink-0 text-stone-600 dark:text-stone-300">2</div>
-                          <p>{t.rule2}</p>
-                        </li>
-                        <li className="flex gap-3">
-                          <div className="w-5 h-5 rounded-full bg-stone-200 dark:bg-stone-700 flex items-center justify-center text-[10px] font-bold shrink-0 text-stone-600 dark:text-stone-300">3</div>
-                          <p>{t.rule3}</p>
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {gameState === 'memorize' && currentLevel && (
-              <div className="flex flex-col items-center w-full animate-in fade-in duration-300">
-                <div className="flex justify-between w-full mb-4 sm:mb-8 items-center px-1 sm:px-2">
-                  <div className="flex flex-col">
-                    <Badge variant="secondary" className="w-fit mb-0.5 sm:mb-1 text-[10px] sm:text-xs">{currentLevel.name(lang)}</Badge>
-                    <h3 className="text-lg sm:text-xl font-bold text-stone-800 dark:text-stone-100">{t.memorizePhase}</h3>
-                  </div>
-                  <div className="flex flex-col items-end">
-                    <p className="text-[8px] sm:text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-0.5 sm:mb-1">{t.timeLeft}</p>
-                    <div className="flex items-center gap-1 sm:gap-2">
-                      <span className="text-amber-600 dark:text-amber-400 font-mono text-2xl sm:text-3xl font-black">{timeLeft}</span>
-                      <span className="text-amber-600 dark:text-amber-400 text-xs sm:text-sm font-bold">s</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <Progress value={(timeLeft / 30) * 100} className="w-full mb-6 sm:mb-8 h-1 sm:h-1.5 bg-stone-100 dark:bg-stone-800" />
-                
-                <div className="bg-stone-50 dark:bg-stone-800 p-2 sm:p-4 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-inner w-full flex justify-center">
-                  <GoBoard size={currentLevel.size} boardState={problemBoard} interactive={false} />
-                </div>
-                
-                <Button
-                  onClick={() => setGameState('recall')}
-                  className="mt-6 sm:mt-10 bg-emerald-600 text-white px-8 sm:px-10 py-5 sm:py-6 rounded-full font-bold hover:bg-emerald-700 transition-all shadow-md hover:shadow-lg text-base sm:text-lg w-full sm:w-auto"
+          {/* Status Bar (Timer & Mode) */}
+          <div className="w-full h-12 flex items-center justify-center">
+            <AnimatePresence mode="wait">
+              {status === 'memorizing' && (
+                <motion.div 
+                  key="timer"
+                  initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                  className="flex items-center gap-4 bg-orange-500 text-black px-6 py-2 rounded-2xl shadow-xl shadow-orange-500/20 border border-white/20"
                 >
-                  {t.startChallenge}
-                </Button>
-              </div>
-            )}
-
-            {gameState === 'recall' && currentLevel && (
-              <div className="flex flex-col items-center w-full animate-in fade-in duration-300">
-                <div className="flex justify-between w-full mb-4 sm:mb-8 items-center px-1 sm:px-2">
+                  <Brain className="w-5 h-5 animate-pulse" />
                   <div className="flex flex-col">
-                    <Badge variant="secondary" className="w-fit mb-0.5 sm:mb-1 text-[10px] sm:text-xs">{currentLevel.name(lang)}</Badge>
-                    <h3 className="text-lg sm:text-xl font-bold text-stone-800 dark:text-stone-100">{t.recallPhase}</h3>
+                    <span className="text-sm uppercase font-black tracking-widest leading-none opacity-60">記憶中</span>
+                    <span className="text-xl font-mono font-black tabular-nums leading-none">{memoryTimer}s</span>
                   </div>
-                  <div className="flex flex-col items-end">
-                    <p className="text-[8px] sm:text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mb-0.5 sm:mb-1">{t.remainingAttempts}</p>
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: currentLevel.attempts }).map((_, i) => (
-                        <div key={i} className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full ${i < attemptsLeft ? 'bg-red-500' : 'bg-stone-200 dark:bg-stone-700'}`}></div>
-                      ))}
-                    </div>
+                </motion.div>
+              )}
+              {status === 'placing' && (
+                <motion.div 
+                  key="recall"
+                  initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                  className="flex items-center gap-4 bg-blue-500 text-white px-6 py-2 rounded-2xl shadow-xl shadow-blue-500/20 border border-white/20"
+                >
+                  <Brain className="w-5 h-5" />
+                  <div className="flex flex-col">
+                    <span className="text-sm uppercase font-black tracking-widest leading-none opacity-60">作答模式</span>
+                    <span className="text-sm font-black uppercase tracking-widest leading-none">進行中</span>
                   </div>
-                </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
-                <div className="bg-stone-50 dark:bg-stone-800 p-2 sm:p-4 rounded-2xl border border-stone-100 dark:border-stone-700 shadow-inner w-full flex justify-center">
-                  <GoBoard
-                    size={currentLevel.size}
-                    boardState={isPeeking ? problemBoard : userBoard}
-                    interactive={!isPeeking}
-                    onIntersectionClick={(x, y) => {
-                      if (!userBoard[y]) return;
-                      const newBoard = [...userBoard];
-                      newBoard[y] = [...newBoard[y]];
-                      const oldColor = newBoard[y][x];
-                      newBoard[y][x] = selectedTool;
-                      setUserBoard(newBoard);
-                    }}
+          <div className="relative group w-full flex justify-center">
+            {/* Board Container with Hardware feel */}
+            <div className="relative p-2 sm:p-4 bg-[#1a1a1a] rounded-[2rem] border border-white/10 shadow-2xl shadow-black">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-[2rem] pointer-events-none" />
+              
+              <motion.div
+                animate={status === 'idle' ? { filter: 'blur(40px)', opacity: 0.1 } : { filter: 'blur(0px)', opacity: 1 }}
+                transition={{ duration: 0.5 }}
+              >
+                {currentProblem ? (
+                  <GoBoard 
+                    stones={stones}
+                    viewRange={currentProblem.viewRange}
+                    onIntersectionClick={handleIntersectionClick}
+                    lastMove={lastMove}
                   />
+                ) : (
+                  <div className="w-[400px] h-[400px] flex items-center justify-center text-white/20">
+                    此分類下無題目
+                  </div>
+                )}
+              </motion.div>
+            </div>
+            
+            {/* Status Overlays */}
+            <AnimatePresence>
+              {status === 'correct' && (
+                <motion.div 
+                  initial={{ scale: 0.8, opacity: 0, y: 20 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.8, opacity: 0, y: -20 }}
+                  className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
+                >
+                  <div className="bg-emerald-500 text-black px-10 py-5 rounded-2xl flex items-center gap-4 shadow-[0_0_50px_rgba(16,185,129,0.4)]">
+                    <CheckCircle2 className="w-10 h-10" />
+                    <div className="flex flex-col">
+                      <span className="text-2xl font-black uppercase italic leading-none">正解！</span>
+                      <span className="text-sm font-bold uppercase tracking-widest opacity-80">掌握棋型</span>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+              {status === 'wrong' && (
+                <motion.div 
+                  initial={{ scale: 0.8, opacity: 0, x: 20 }}
+                  animate={{ scale: 1, opacity: 1, x: 0 }}
+                  exit={{ scale: 0.8, opacity: 0, x: -20 }}
+                  className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
+                >
+                  <div className="bg-red-500 text-white px-10 py-5 rounded-2xl flex items-center gap-4 shadow-[0_0_50px_rgba(239,68,68,0.4)]">
+                    <XCircle className="w-10 h-10" />
+                    <div className="flex flex-col">
+                      <span className="text-2xl font-black uppercase italic leading-none">不對</span>
+                      <span className="text-sm font-bold uppercase tracking-widest opacity-80">再試一次</span>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Controls */}
+          <div className="flex flex-col items-center gap-6 w-full">
+            {/* Quick Actions during Memorization */}
+            {status === 'memorizing' && (
+              <motion.button
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                onClick={startRecallNow}
+                className="px-8 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition-all active:scale-95 border border-white/10 flex items-center gap-2"
+              >
+                <Target className="w-4 h-4 text-orange-400" />
+                <span>立刻開始作答</span>
+              </motion.button>
+            )}
+
+            {/* Tool Selection */}
+            {status === 'placing' && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex flex-col items-center gap-4"
+              >
+                <div className="flex items-center gap-2 bg-white/5 p-2 rounded-2xl border border-white/10 backdrop-blur-md">
+                  <button
+                    onClick={() => setSelectedTool('black')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+                      selectedTool === 'black' ? 'bg-white text-black font-bold' : 'text-white/40 hover:text-white'
+                    }`}
+                  >
+                    <Circle className="w-4 h-4 fill-current" />
+                    <span className="text-sm uppercase tracking-widest">黑子</span>
+                  </button>
+                  <button
+                    onClick={() => setSelectedTool('white')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+                      selectedTool === 'white' ? 'bg-white text-black font-bold' : 'text-white/40 hover:text-white'
+                    }`}
+                  >
+                    <Circle className="w-4 h-4" />
+                    <span className="text-sm uppercase tracking-widest">白子</span>
+                  </button>
+                  <div className="w-px h-4 bg-white/10 mx-1" />
+                  <button
+                    onClick={() => setSelectedTool('eraser')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+                      selectedTool === 'eraser' ? 'bg-red-500 text-white font-bold' : 'text-white/40 hover:text-red-400'
+                    }`}
+                  >
+                    <Eraser className="w-4 h-4" />
+                    <span className="text-sm uppercase tracking-widest">橡皮擦</span>
+                  </button>
                 </div>
 
-                {isPeeking && (
-                  <div className="mt-3 sm:mt-4 flex flex-col items-center animate-pulse">
-                    <p className="text-amber-600 dark:text-amber-400 font-bold text-[10px] sm:text-sm uppercase tracking-widest mb-1">{t.memorizePhase}</p>
-                    <div className="flex items-center gap-1 sm:gap-2">
-                      <span className="text-amber-600 dark:text-amber-400 font-mono text-xl sm:text-2xl font-black">{peekTimeLeft}</span>
-                      <span className="text-amber-600 dark:text-amber-400 text-[10px] sm:text-xs font-bold">s</span>
+                {selectedLevel !== '極限' && !peekUsed && (
+                  <button
+                    onClick={peekProblem}
+                    className="flex items-center gap-2 px-6 py-2 rounded-full bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 border border-orange-500/30 transition-all active:scale-95 group"
+                  >
+                    <Brain className="w-4 h-4 group-hover:animate-pulse" />
+                    <span className="text-sm font-bold uppercase tracking-widest">再看一次 (10秒)</span>
+                  </button>
+                )}
+              </motion.div>
+            )}
+
+            <div className="flex items-center gap-4 bg-white/5 p-2 rounded-2xl border border-white/10 backdrop-blur-md">
+              <button 
+                onClick={prevProblem}
+                className="p-4 rounded-xl hover:bg-white/10 text-white/60 hover:text-white transition-all active:scale-95"
+                title="上一題"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+              <div className="h-8 w-px bg-white/10" />
+              <button 
+                onClick={resetProblem}
+                className="px-8 py-4 rounded-xl hover:bg-white/10 flex items-center gap-3 transition-all active:scale-95 group"
+              >
+                <RotateCcw className="w-5 h-5 text-orange-500 group-hover:rotate-[-180deg] transition-transform duration-500" />
+                <span className="font-bold uppercase tracking-widest text-sm">重置</span>
+              </button>
+              <div className="h-8 w-px bg-white/10" />
+              {status === 'idle' ? (
+                <button 
+                  onClick={startTraining}
+                  className="px-8 py-4 rounded-xl bg-orange-500 hover:bg-orange-400 text-black flex items-center gap-3 transition-all active:scale-95 group shadow-lg shadow-orange-500/20"
+                >
+                  <Brain className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  <span className="font-bold uppercase tracking-widest text-sm">開始作答</span>
+                </button>
+              ) : status === 'placing' ? (
+                <button 
+                  onClick={checkAnswer}
+                  className="px-8 py-4 rounded-xl bg-blue-500 hover:bg-blue-400 text-white flex items-center gap-3 transition-all active:scale-95 group shadow-lg shadow-blue-500/20"
+                >
+                  <CheckCircle2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  <span className="font-bold uppercase tracking-widest text-sm">確認答案</span>
+                </button>
+              ) : (
+                <div className="px-8 py-4 flex items-center gap-3 text-white/20">
+                  <Brain className="w-5 h-5" />
+                  <span className="font-bold uppercase tracking-widest text-sm">進行中...</span>
+                </div>
+              )}
+              <div className="h-8 w-px bg-white/10" />
+              <button 
+                onClick={nextProblem}
+                className="p-4 rounded-xl hover:bg-white/10 text-white/60 hover:text-white transition-all active:scale-95"
+                title="下一題"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Next Problem Button after Completion */}
+            {(status === 'correct' || status === 'wrong' || showExplanation) && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                onClick={nextProblem}
+                className="w-full max-w-xs py-6 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-black font-black text-xl transition-all shadow-xl shadow-orange-500/20 active:scale-[0.98] flex items-center justify-center gap-3"
+              >
+                <span>下一題挑戰</span>
+                <ChevronRight className="w-6 h-6" />
+              </motion.button>
+            )}
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="mt-12 border-t border-white/5 p-12 text-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="flex items-center gap-2 opacity-20">
+            <div className="w-2 h-2 rounded-full bg-white" />
+            <div className="w-2 h-2 rounded-full bg-white" />
+            <div className="w-2 h-2 rounded-full bg-white" />
+          </div>
+          <p className="text-sm font-mono uppercase tracking-[0.4em] text-white/20">
+            手筋辭典 • 經典題目 • 棋型記憶
+          </p>
+        </div>
+      </footer>
+
+      {/* Stats Modal */}
+      <AnimatePresence>
+        {showStats && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowStats(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-2xl bg-[#1a1a1a] border border-white/10 rounded-[2.5rem] p-8 shadow-2xl"
+            >
+              <div className="flex justify-between items-center mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="bg-orange-500/20 p-2 rounded-xl">
+                    <BarChart3 className="w-6 h-6 text-orange-500" />
+                  </div>
+                  <h2 className="text-2xl font-bold">學習進度統計</h2>
+                </div>
+                <button 
+                  onClick={() => setShowStats(false)}
+                  className="p-2 hover:bg-white/5 rounded-full transition-colors"
+                >
+                  <XCircle className="w-6 h-6 text-white/40" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                {LEVELS.filter(l => l !== '全部').map(level => {
+                  const s = stats[level] || { attempted: 0, correct: 0 };
+                  const rate = s.attempted > 0 ? Math.round((s.correct / s.attempted) * 100) : 0;
+                  
+                  return (
+                    <div key={level} className="bg-white/5 p-6 rounded-3xl border border-white/5 flex items-center justify-between group hover:bg-white/10 transition-all">
+                      <div className="flex flex-col">
+                        <span className="text-lg font-bold text-white/90">{level}</span>
+                        <div className="flex gap-4 mt-1">
+                          <span className="text-sm text-white/40 font-mono">已學習: <span className="text-white/80">{s.attempted}</span></span>
+                          <span className="text-sm text-white/40 font-mono">已答對: <span className="text-emerald-400/80">{s.correct}</span></span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <span className="text-sm text-white/30 uppercase tracking-widest font-mono">答對率</span>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-3xl font-black font-mono text-orange-400">{rate}</span>
+                          <span className="text-sm font-bold text-orange-400/60">%</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-8 flex justify-center">
+                <button 
+                  onClick={() => {
+                    if (confirm('確定要清除所有學習進度嗎？')) {
+                      setStats({
+                        '初學': { attempted: 0, correct: 0 },
+                        '基礎': { attempted: 0, correct: 0 },
+                        '中階': { attempted: 0, correct: 0 },
+                        '高階': { attempted: 0, correct: 0 },
+                        '極限': { attempted: 0, correct: 0 },
+                      });
+                    }
+                  }}
+                  className="text-sm text-white/20 hover:text-red-400 uppercase tracking-[0.2em] font-mono transition-colors"
+                >
+                  清除所有統計數據
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Auth Modal */}
+      <AnimatePresence>
+        {showAuthModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowAuthModal(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md bg-[#1a1a1a] border border-white/10 rounded-[2.5rem] p-8 shadow-2xl"
+            >
+              <div className="flex justify-between items-center mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="bg-orange-500/20 p-2 rounded-xl">
+                    <LogIn className="w-6 h-6 text-orange-500" />
+                  </div>
+                  <h2 className="text-2xl font-bold">{authMode === 'login' ? '會員登入' : '註冊帳號'}</h2>
+                </div>
+                <button 
+                  onClick={() => setShowAuthModal(false)}
+                  className="p-2 hover:bg-white/5 rounded-full transition-colors"
+                >
+                  <XCircle className="w-6 h-6 text-white/40" />
+                </button>
+              </div>
+
+              <form onSubmit={handleAuth} className="space-y-4">
+                {authMode === 'register' && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">使用者名稱</label>
+                    <div className="relative">
+                      <UserIconLucide className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                      <input 
+                        type="text"
+                        required
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        placeholder="您的名稱"
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-orange-500/50 transition-colors"
+                      />
                     </div>
                   </div>
                 )}
-
-                {/* Toolbar */}
-                <div className="flex gap-2 sm:gap-4 mt-6 sm:mt-10 bg-stone-100 dark:bg-stone-800 p-1.5 sm:p-2 rounded-2xl shadow-inner border border-stone-200 dark:border-stone-700">
-                  <Button
-                    variant={selectedTool === 1 ? 'default' : 'ghost'}
-                    size="icon"
-                    onClick={() => setSelectedTool(1)}
-                    className={`w-12 h-12 sm:w-16 sm:h-16 rounded-xl transition-all ${selectedTool === 1 ? 'bg-white dark:bg-stone-900 shadow-md ring-2 ring-emerald-500 scale-110' : ''}`}
-                  >
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-stone-600 to-black shadow-sm" />
-                  </Button>
-                  <Button
-                    variant={selectedTool === 2 ? 'default' : 'ghost'}
-                    size="icon"
-                    onClick={() => setSelectedTool(2)}
-                    className={`w-12 h-12 sm:w-16 sm:h-16 rounded-xl transition-all ${selectedTool === 2 ? 'bg-white dark:bg-stone-900 shadow-md ring-2 ring-emerald-500 scale-110' : ''}`}
-                  >
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-white to-stone-300 shadow-sm border border-stone-200 dark:border-stone-700" />
-                  </Button>
-                  <Button
-                    variant={selectedTool === 0 ? 'default' : 'ghost'}
-                    size="icon"
-                    onClick={() => setSelectedTool(0)}
-                    className={`w-12 h-12 sm:w-16 sm:h-16 rounded-xl transition-all ${selectedTool === 0 ? 'bg-white dark:bg-stone-900 shadow-md ring-2 ring-emerald-500 scale-110' : ''}`}
-                  >
-                    <X className="w-6 h-6 sm:w-8 sm:h-8 text-stone-500" />
-                  </Button>
-                </div>
-
-                {message && (
-                  <div className="mt-4 sm:mt-6 text-red-500 font-bold animate-bounce bg-red-50 dark:bg-red-900/20 px-4 sm:px-6 py-1.5 sm:py-2 rounded-full border border-red-100 dark:border-red-900/30 text-[10px] sm:text-sm">
-                    {message}
-                  </div>
-                )}
-
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6 sm:mt-10 w-full sm:w-auto">
-                  {currentLevel.id !== 'extreme' && !hasPeeked && (
-                    <Button
-                      variant="outline"
-                      onClick={handlePeek}
-                      className="px-6 sm:px-8 py-5 sm:py-7 rounded-full font-bold border-stone-200 dark:border-stone-700 text-base sm:text-lg dark:text-stone-100 flex-1 sm:flex-none"
-                    >
-                      {t.peek}
-                    </Button>
-                  )}
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={isPeeking}
-                    className="bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 px-10 sm:px-12 py-5 sm:py-7 rounded-full font-bold hover:bg-stone-800 dark:hover:bg-stone-200 transition-all shadow-md hover:shadow-lg flex-1 sm:flex-none text-lg sm:text-xl"
-                  >
-                    {t.submitAnswer}
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {gameState === 'result' && currentLevel && (
-              <div className="flex flex-col items-center w-full text-center py-10 animate-in zoom-in-95 duration-300">
-                <div className="w-24 h-24 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mb-8 shadow-inner">
-                  <CheckCircle2 className="w-14 h-14" />
-                </div>
-                <h2 className="text-4xl font-black mb-4 text-stone-900 dark:text-stone-100 tracking-tight">{t.correctAnswer}</h2>
-                <p className="text-stone-500 dark:text-stone-400 mb-10 text-lg max-w-xs">
-                  {streak > 0 && streak % 3 === 0 ? (
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">{t.streakBonus}</span>
-                  ) : (
-                    t.goodMemory
-                  )}
-                </p>
-
-                <Card className="bg-stone-50 dark:bg-stone-800 border-none shadow-none px-8 py-6 rounded-2xl mb-10 w-full max-w-sm">
-                  <p className="text-stone-500 dark:text-stone-400 text-xs font-bold uppercase tracking-widest mb-2">{t.currentDifficulty}</p>
-                  <p className="text-2xl font-black text-stone-900 dark:text-stone-100">{currentStoneCount} {t.stones}</p>
-                  {isMaxDifficulty && hasNextLevel ? (
-                    <Badge className="mt-4 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 border-none">{t.maxDifficultyReached}</Badge>
-                  ) : (
-                    <Badge className="mt-4 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 border-none">{t.difficultyIncreased}</Badge>
-                  )}
-                </Card>
-
-                <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-                  <Button
-                    onClick={() => currentLevelKey && currentLevel && startProblem(currentLevelKey, currentLevel, currentStoneCount)}
-                    className="bg-emerald-600 text-white px-10 py-7 rounded-full font-bold hover:bg-emerald-700 transition-all shadow-md text-lg"
-                  >
-                    {t.nextProblem}
-                  </Button>
-                  {isMaxDifficulty && hasNextLevel && (
-                    <Button
-                      onClick={handleNextLevel}
-                      className="bg-indigo-600 text-white px-10 py-7 rounded-full font-bold hover:bg-indigo-700 transition-all shadow-md text-lg flex items-center gap-2"
-                    >
-                      {t.nextLevel} <ChevronRight className="w-5 h-5" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {gameState === 'gameover' && currentLevel && (
-              <div className="flex flex-col items-center w-full text-center py-6 animate-in zoom-in-95 duration-300">
-                <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mb-6 shadow-inner">
-                  <AlertCircle className="w-12 h-12" />
-                </div>
-                <h2 className="text-3xl font-black mb-2 text-stone-900 dark:text-stone-100">{t.gameOver}</h2>
-                <div className="flex items-center gap-3 mb-10">
-                  <p className="text-stone-400 dark:text-stone-500 text-sm font-bold uppercase tracking-widest">{t.finalScore}</p>
-                  <span className="font-black text-stone-900 dark:text-stone-100 text-4xl">{score}</span>
-                </div>
-
-                <div className="mb-10 w-full max-w-sm">
-                  <div className="bg-stone-50 dark:bg-stone-800 p-6 rounded-2xl border border-stone-100 dark:border-stone-700">
-                    <p className="text-xs font-bold mb-4 text-stone-400 dark:text-stone-500 uppercase tracking-widest flex items-center justify-center gap-2">
-                      {t.yourAnswer}
-                    </p>
-                    <GoBoard
-                      size={currentLevel.size}
-                      boardState={userBoard}
-                      interactive={false}
-                      showErrors={true}
-                      problemBoard={problemBoard}
+                <div className="space-y-2">
+                  <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">電子郵件</label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                    <input 
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="example@mail.com"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-orange-500/50 transition-colors"
                     />
                   </div>
                 </div>
-
-                <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-                  <Button
-                    onClick={() => currentLevelKey && currentLevel && startProblem(currentLevelKey, currentLevel, currentStoneCount)}
-                    variant="outline"
-                    className="px-10 py-7 rounded-full font-bold border-stone-200 dark:border-stone-700 text-lg dark:text-stone-100"
-                  >
-                    {t.tryAgain}
-                  </Button>
-                  <Button
-                    onClick={() => setGameState('menu')}
-                    className="bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 px-10 py-7 rounded-full font-bold hover:bg-stone-800 dark:hover:bg-stone-200 transition-all shadow-md text-lg"
-                  >
-                    {t.backToMenu}
-                  </Button>
+                <div className="space-y-2">
+                  <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">密碼</label>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                    <input 
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-12 text-sm focus:outline-none focus:border-orange-500/50 transition-colors"
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 hover:text-white transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-        
-        <footer className="mt-10 text-center text-stone-400 dark:text-stone-500 text-xs font-medium uppercase tracking-[0.2em]">
-          &copy; 2024 GOMEMO &bull; {t.footer}
-        </footer>
-      </div>
+
+                {authMode === 'register' && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">確認密碼</label>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                      <input 
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-12 text-sm focus:outline-none focus:border-orange-500/50 transition-colors"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {authError && (
+                  <p className="text-sm text-red-400 bg-red-400/10 p-3 rounded-xl border border-red-400/20">
+                    {authError}
+                  </p>
+                )}
+
+                <button 
+                  type="submit"
+                  disabled={isAuthProcessing}
+                  className="w-full py-4 rounded-2xl bg-orange-500 hover:bg-orange-400 text-black font-bold text-sm transition-all shadow-lg shadow-orange-500/20 active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isAuthProcessing ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    authMode === 'login' ? '登入' : '註冊'
+                  )}
+                </button>
+
+                <div className="text-center mt-6">
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setAuthMode(authMode === 'login' ? 'register' : 'login');
+                      setAuthError('');
+                      setConfirmPassword('');
+                    }}
+                    className="text-sm text-white/40 hover:text-white transition-colors"
+                  >
+                    {authMode === 'login' ? '還沒有帳號？立即註冊' : '已有帳號？返回登入'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
-}
+};
 
-export default function App() {
-  return (
-    <ErrorBoundary>
-      <Toaster position="top-right" richColors />
-      <GameContent />
-    </ErrorBoundary>
-  );
-}
-
+export default App;

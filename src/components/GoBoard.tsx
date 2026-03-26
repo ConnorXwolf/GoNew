@@ -1,285 +1,139 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
+import { Stone, Color } from '../types';
 
 interface GoBoardProps {
-  size: number;
-  boardState: number[][];
-  interactive?: boolean;
-  onIntersectionClick?: (x: number, y: number) => void;
-  showErrors?: boolean;
-  problemBoard?: number[][];
+  stones: Stone[];
+  viewRange: {
+    xStart: number;
+    xEnd: number;
+    yStart: number;
+    yEnd: number;
+  };
+  onIntersectionClick: (x: number, y: number) => void;
+  lastMove?: Stone;
 }
 
 export const GoBoard: React.FC<GoBoardProps> = ({
-  size,
-  boardState,
-  interactive = false,
+  stones,
+  viewRange,
   onIntersectionClick,
-  showErrors = false,
-  problemBoard,
+  lastMove,
 }) => {
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const containerRef = useRef<HTMLDivElement>(null);
+  const { xStart, xEnd, yStart, yEnd } = viewRange;
+  const width = xEnd - xStart;
+  const height = yEnd - yStart;
+  const cellSize = 40;
+  const padding = 20;
 
-  const cellSize = 10;
-  const boardPixelSize = size * cellSize;
-  const offset = cellSize / 2;
-  const labelMargin = 8;
-  const totalSize = boardPixelSize + labelMargin * 2;
-
-  const userColLabels = "ABCDEFGHIJKLMNOPQRS".split(""); 
-
-  const starPoints = [];
-  if (size === 9) {
-    starPoints.push([2, 2], [6, 2], [4, 4], [2, 6], [6, 6]);
-  } else if (size === 13) {
-    starPoints.push([3, 3], [9, 3], [6, 6], [3, 9], [9, 9]);
-  } else if (size === 19) {
-    starPoints.push(
-      [3, 3], [9, 3], [15, 3],
-      [3, 9], [9, 9], [15, 9],
-      [3, 15], [9, 15], [15, 15]
-    );
-  }
-
-  const handleDoubleClick = (e: React.MouseEvent | React.TouchEvent) => {
-    if (zoom === 1) {
-      setZoom(1.5);
-      // Reset pan when zooming in
-      setPan({ x: 0, y: 0 });
-    } else {
-      setZoom(1);
-      setPan({ x: 0, y: 0 });
-    }
-  };
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (zoom > 1) {
-      setIsDragging(true);
-      setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (isDragging && zoom > 1) {
-      const newX = e.clientX - dragStart.x;
-      const newY = e.clientY - dragStart.y;
-      
-      // Limit panning range
-      const limit = (totalSize * (zoom - 1)) / 2;
-      setPan({
-        x: Math.max(-limit, Math.min(limit, newX)),
-        y: Math.max(-limit, Math.min(limit, newY))
-      });
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (zoom > 1 && e.touches.length === 1) {
-      setIsDragging(true);
-      setDragStart({ 
-        x: e.touches[0].clientX - pan.x, 
-        y: e.touches[0].clientY - pan.y 
-      });
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (isDragging && zoom > 1 && e.touches.length === 1) {
-      const newX = e.touches[0].clientX - dragStart.x;
-      const newY = e.touches[0].clientY - dragStart.y;
-      
-      const limit = (totalSize * (zoom - 1)) / 2;
-      setPan({
-        x: Math.max(-limit, Math.min(limit, newX)),
-        y: Math.max(-limit, Math.min(limit, newY))
-      });
-    }
-  };
-
-  const handleTouchEnd = () => {
-    setIsDragging(false);
+  const getStoneAt = (x: number, y: number) => {
+    return stones.find((s) => s.x === x && s.y === y);
   };
 
   return (
-    <div 
-      ref={containerRef}
-      className="relative w-full max-w-[min(90vw,480px)] aspect-square bg-[#E3C16F] shadow-xl rounded-sm border-2 border-[#8B5A2B] p-1 sm:p-2 overflow-hidden select-none touch-none"
-      onDoubleClick={handleDoubleClick}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
-      <svg 
-        viewBox={`-${labelMargin} -${labelMargin} ${totalSize} ${totalSize}`} 
-        className="w-full h-full transition-transform duration-200 ease-out"
-        style={{
-          transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
-          cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default'
-        }}
+    <div className="relative inline-block bg-[#e3c16f] p-4 rounded-lg shadow-xl border-4 border-[#8b5a2b]">
+      <svg
+        width={(width + 1) * cellSize + padding * 2}
+        height={(height + 1) * cellSize + padding * 2}
+        viewBox={`0 0 ${(width + 1) * cellSize + padding * 2} ${(height + 1) * cellSize + padding * 2}`}
+        className="cursor-pointer"
       >
-        <g>
-          {/* Coordinates */}
-          {Array.from({ length: size }).map((_, i) => (
-            <React.Fragment key={`coords-${i}`}>
-              {/* Top labels (Letters) */}
-              <text
-                x={i * cellSize + offset}
-                y={-labelMargin / 2}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fontSize="4"
-                fill="#5C4033"
-                fontWeight="bold"
-                className="select-none"
-              >
-                {userColLabels[i]}
-              </text>
-              {/* Bottom labels (Letters) */}
-              <text
-                x={i * cellSize + offset}
-                y={boardPixelSize + labelMargin / 2}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fontSize="4"
-                fill="#5C4033"
-                fontWeight="bold"
-                className="select-none"
-              >
-                {userColLabels[i]}
-              </text>
-              {/* Left labels (Numbers) */}
-              <text
-                x={-labelMargin / 2}
-                y={i * cellSize + offset}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fontSize="4"
-                fill="#5C4033"
-                fontWeight="bold"
-                className="select-none"
-              >
-                {size - i}
-              </text>
-              {/* Right labels (Numbers) */}
-              <text
-                x={boardPixelSize + labelMargin / 2}
-                y={i * cellSize + offset}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fontSize="4"
-                fill="#5C4033"
-                fontWeight="bold"
-                className="select-none"
-              >
-                {size - i}
-              </text>
-            </React.Fragment>
-          ))}
+        {/* Grid Lines */}
+        {Array.from({ length: width + 1 }).map((_, i) => (
+          <line
+            key={`v-${i}`}
+            x1={padding + i * cellSize}
+            y1={padding}
+            x2={padding + i * cellSize}
+            y2={padding + height * cellSize}
+            stroke="#1a1a1a"
+            strokeWidth="1"
+          />
+        ))}
+        {Array.from({ length: height + 1 }).map((_, i) => (
+          <line
+            key={`h-${i}`}
+            x1={padding}
+            y1={padding + i * cellSize}
+            x2={padding + width * cellSize}
+            y2={padding + i * cellSize}
+            stroke="#1a1a1a"
+            strokeWidth="1"
+          />
+        ))}
 
-          {Array.from({ length: size }).map((_, i) => (
-            <g key={`lines-${i}`}>
-              <line 
-                x1={offset} y1={i * cellSize + offset} 
-                x2={boardPixelSize - offset} y2={i * cellSize + offset} 
-                stroke="#5C4033" strokeWidth="0.3" 
-              />
-              <line 
-                x1={i * cellSize + offset} y1={offset} 
-                x2={i * cellSize + offset} y2={boardPixelSize - offset} 
-                stroke="#5C4033" strokeWidth="0.3" 
-              />
-            </g>
-          ))}
-          
-          {starPoints.map(([x, y], i) => (
-            <circle key={`star-${i}`} cx={x * cellSize + offset} cy={y * cellSize + offset} r={0.8} fill="#5C4033" />
-          ))}
-          
-          {boardState.map((row, y) => 
-            row.map((stone, x) => {
-              if (stone === 0) return null;
-              const pStone = (problemBoard && problemBoard[y]) ? problemBoard[y][x] : 0;
-              const pColor = pStone === 0 ? 0 : (pStone % 10);
-              const isError = showErrors && problemBoard && pColor !== (stone % 10);
-              const isBlack = (stone % 10) === 1;
-              
+        {/* Star Points (Hoshi) - only if they fall within the range */}
+        {[3, 9, 15].map((x) =>
+          [3, 9, 15].map((y) => {
+            if (x >= xStart && x <= xEnd && y >= yStart && y <= yEnd) {
               return (
-                <g key={`stone-${x}-${y}`} className="transition-all duration-200">
-                  <circle cx={x * cellSize + offset + 0.3} cy={y * cellSize + offset + 0.5} r={4.6} fill="rgba(0,0,0,0.4)" />
-                  <circle 
-                    cx={x * cellSize + offset} 
-                    cy={y * cellSize + offset} 
-                    r={4.8} 
-                    fill={isBlack ? 'url(#blackStone)' : 'url(#whiteStone)'} 
-                  />
-                  {isError && (
-                    <circle cx={x * cellSize + offset} cy={y * cellSize + offset} r={1.5} fill="#ef4444" />
-                  )}
-                </g>
+                <circle
+                  key={`hoshi-${x}-${y}`}
+                  cx={padding + (x - xStart) * cellSize}
+                  cy={padding + (y - yStart) * cellSize}
+                  r="3"
+                  fill="#1a1a1a"
+                />
               );
-            })
-          )}
+            }
+            return null;
+          })
+        )}
 
-          {showErrors && problemBoard && problemBoard.map((row, y) => 
-            row.map((stone, x) => {
-              if (stone !== 0 && boardState[y] && boardState[y][x] === 0) {
-                const isBlack = (stone % 10) === 1;
-                return (
-                  <g key={`missing-${x}-${y}`}>
-                    <circle 
-                      cx={x * cellSize + offset} 
-                      cy={y * cellSize + offset} 
-                      r={4.8} 
-                      fill={isBlack ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.3)'} 
-                      stroke="#ef4444"
-                      strokeWidth="0.8"
-                      strokeDasharray="1,1"
-                    />
-                  </g>
-                );
-              }
-              return null;
-            })
-          )}
-
-          {interactive && Array.from({ length: size }).map((_, y) => 
-            Array.from({ length: size }).map((_, x) => (
-              <rect 
+        {/* Clickable Intersections */}
+        {Array.from({ length: width + 1 }).map((_, i) =>
+          Array.from({ length: height + 1 }).map((_, j) => {
+            const x = xStart + i;
+            const y = yStart + j;
+            return (
+              <rect
                 key={`click-${x}-${y}`}
-                x={x * cellSize} 
-                y={y * cellSize} 
-                width={cellSize} 
-                height={cellSize} 
-                fill="transparent" 
-                className="cursor-pointer hover:fill-black/10 transition-colors"
-                onClick={() => onIntersectionClick?.(x, y)} 
+                x={padding + i * cellSize - cellSize / 2}
+                y={padding + j * cellSize - cellSize / 2}
+                width={cellSize}
+                height={cellSize}
+                fill="transparent"
+                onClick={() => onIntersectionClick(x, y)}
+                className="hover:fill-black/5 transition-colors"
               />
-            ))
-          )}
-        </g>
+            );
+          })
+        )}
 
-        <defs>
-          <radialGradient id="blackStone" cx="30%" cy="30%" r="70%">
-            <stop offset="0%" stopColor="#555" />
-            <stop offset="100%" stopColor="#111" />
-          </radialGradient>
-          <radialGradient id="whiteStone" cx="30%" cy="30%" r="70%">
-            <stop offset="0%" stopColor="#fff" />
-            <stop offset="100%" stopColor="#d4d4d4" />
-          </radialGradient>
-        </defs>
+        {/* Stones */}
+        {stones.map((stone, idx) => {
+          if (stone.x < xStart || stone.x > xEnd || stone.y < yStart || stone.y > yEnd) return null;
+          const cx = padding + (stone.x - xStart) * cellSize;
+          const cy = padding + (stone.y - yStart) * cellSize;
+          const isLast = lastMove?.x === stone.x && lastMove?.y === stone.y;
+
+          return (
+            <g key={`stone-${idx}`} className="pointer-events-none">
+              <circle
+                cx={cx}
+                cy={cy}
+                r={cellSize / 2 - 2}
+                fill={stone.color === 'black' ? '#1a1a1a' : '#ffffff'}
+                stroke="#1a1a1a"
+                strokeWidth="1"
+                className="drop-shadow-md"
+              />
+              {isLast && (
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r="4"
+                  fill={stone.color === 'black' ? '#ffffff' : '#1a1a1a'}
+                />
+              )}
+            </g>
+          );
+        })}
       </svg>
+      
+      {/* Coordinates */}
+      <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
+         {/* We can add letters/numbers here if needed */}
+      </div>
     </div>
   );
 };
