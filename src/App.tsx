@@ -233,7 +233,7 @@ function GameContent() {
   // New state for i18n and theme
   const [lang, setLang] = useState<Language>(() => {
     const saved = localStorage.getItem('goMemoLang');
-    return (saved as Language) || 'zh';
+    return (saved as Language) || 'en';
   });
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('goMemoTheme');
