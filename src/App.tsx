@@ -1055,18 +1055,32 @@ function GameContent() {
                   <span className="font-black text-stone-900 dark:text-stone-100 text-4xl">{score}</span>
                 </div>
 
-                <div className="mb-10 w-full max-w-sm bg-stone-50 dark:bg-stone-800 p-6 rounded-2xl border border-stone-100 dark:border-stone-700">
-                  <p className="text-xs font-bold mb-4 text-stone-400 dark:text-stone-500 uppercase tracking-widest flex items-center justify-center gap-2">
-                    {t.correctAnswerComparison}
-                  </p>
-                  <GoBoard
-                    size={currentLevel.size}
-                    boardState={userBoard}
-                    interactive={false}
-                    showErrors={true}
-                    problemBoard={problemBoard}
-                    showMoveNumbers={true}
-                  />
+                <div className="mb-10 w-full max-w-sm flex flex-col gap-6">
+                  <div className="bg-stone-50 dark:bg-stone-800 p-6 rounded-2xl border border-stone-100 dark:border-stone-700">
+                    <p className="text-xs font-bold mb-4 text-stone-400 dark:text-stone-500 uppercase tracking-widest flex items-center justify-center gap-2">
+                      {t.correctAnswerComparison}
+                    </p>
+                    <GoBoard
+                      size={currentLevel.size}
+                      boardState={problemBoard}
+                      interactive={false}
+                      showMoveNumbers={true}
+                    />
+                  </div>
+
+                  <div className="bg-stone-50 dark:bg-stone-800 p-6 rounded-2xl border border-stone-100 dark:border-stone-700">
+                    <p className="text-xs font-bold mb-4 text-stone-400 dark:text-stone-500 uppercase tracking-widest flex items-center justify-center gap-2">
+                      {t.yourAnswer}
+                    </p>
+                    <GoBoard
+                      size={currentLevel.size}
+                      boardState={userBoard}
+                      interactive={false}
+                      showErrors={true}
+                      problemBoard={problemBoard}
+                      showMoveNumbers={currentLevel.id === 'extreme'}
+                    />
+                  </div>
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">

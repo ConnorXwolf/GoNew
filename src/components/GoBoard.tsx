@@ -67,7 +67,7 @@ export const GoBoard: React.FC<GoBoardProps> = ({
             const pColor = pStone === 0 ? 0 : (pStone % 10);
             const isError = showErrors && problemBoard && pColor !== (stone % 10);
             const isBlack = (stone % 10) === 1;
-            const showNumber = showMoveNumbers && stone > 2;
+            const showNumber = showMoveNumbers && (stone > 2 || (showErrors && pStone > 2));
             
             return (
               <g key={`stone-${x}-${y}`} className="transition-all duration-200">
@@ -90,7 +90,7 @@ export const GoBoard: React.FC<GoBoardProps> = ({
                     className="pointer-events-none select-none"
                     style={{ filter: isBlack ? 'drop-shadow(0px 0px 1px rgba(0,0,0,0.5))' : 'none' }}
                   >
-                    {Math.floor(stone / 10)}
+                    {stone > 2 ? Math.floor(stone / 10) : Math.floor(pStone / 10)}
                   </text>
                 )}
                 {isError && (
@@ -104,7 +104,7 @@ export const GoBoard: React.FC<GoBoardProps> = ({
         {showErrors && problemBoard && problemBoard.map((row, y) => 
           row.map((stone, x) => {
             if (stone !== 0 && boardState[y] && boardState[y][x] === 0) {
-              const isBlack = stone % 2 === 1;
+              const isBlack = (stone % 10) === 1;
               return (
                 <g key={`missing-${x}-${y}`}>
                   <circle 
@@ -116,7 +116,7 @@ export const GoBoard: React.FC<GoBoardProps> = ({
                     strokeWidth="0.8"
                     strokeDasharray="1,1"
                   />
-                  {showMoveNumbers && problemHasSequence && (
+                  {showMoveNumbers && (
                     <text
                       x={x * cellSize + offset}
                       y={y * cellSize + offset}
@@ -127,7 +127,7 @@ export const GoBoard: React.FC<GoBoardProps> = ({
                       fill={isBlack ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.5)'}
                       className="pointer-events-none select-none"
                     >
-                      {stone}
+                      {Math.floor(stone / 10)}
                     </text>
                   )}
                 </g>
