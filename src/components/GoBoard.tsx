@@ -23,19 +23,26 @@ export const GoBoard: React.FC<GoBoardProps> = ({
   const width = xEnd - xStart;
   const height = yEnd - yStart;
   const cellSize = 40;
-  const padding = 20;
+  const padding = 35; // Increased padding for coordinates
 
-  const getStoneAt = (x: number, y: number) => {
-    return stones.find((s) => s.x === x && s.y === y);
+  const getXLabel = (val: number) => {
+    const labels = "ABCDEFGHJKLMNOPQRST";
+    return labels[val] || val.toString();
   };
 
+  const getYLabel = (val: number) => {
+    return (19 - val).toString();
+  };
+
+  // For relative coordinates as requested (A-I, 1-9)
+  const getRelativeXLabel = (i: number) => "ABCDEFGHI"[i] || "";
+  const getRelativeYLabel = (j: number) => (j + 1).toString();
+
   return (
-    <div className="relative inline-block bg-[#e3c16f] p-4 rounded-lg shadow-xl border-4 border-[#8b5a2b]">
+    <div className="relative inline-block bg-[#e3c16f] p-1 sm:p-2 rounded-lg shadow-xl border-2 sm:border-4 border-[#8b5a2b] w-full max-w-[600px]">
       <svg
-        width={(width + 1) * cellSize + padding * 2}
-        height={(height + 1) * cellSize + padding * 2}
         viewBox={`0 0 ${(width + 1) * cellSize + padding * 2} ${(height + 1) * cellSize + padding * 2}`}
-        className="cursor-pointer"
+        className="w-full h-auto cursor-pointer block"
       >
         {/* Grid Lines */}
         {Array.from({ length: width + 1 }).map((_, i) => (
@@ -59,6 +66,56 @@ export const GoBoard: React.FC<GoBoardProps> = ({
             stroke="#1a1a1a"
             strokeWidth="1"
           />
+        ))}
+
+        {/* Coordinates */}
+        {Array.from({ length: width + 1 }).map((_, i) => (
+          <g key={`coord-x-${i}`}>
+            <text
+              x={padding + i * cellSize}
+              y={padding - 12}
+              textAnchor="middle"
+              fontSize="12"
+              fontWeight="bold"
+              fill="#5d4037"
+            >
+              {getRelativeXLabel(i)}
+            </text>
+            <text
+              x={padding + i * cellSize}
+              y={padding + height * cellSize + 20}
+              textAnchor="middle"
+              fontSize="12"
+              fontWeight="bold"
+              fill="#5d4037"
+            >
+              {getRelativeXLabel(i)}
+            </text>
+          </g>
+        ))}
+        {Array.from({ length: height + 1 }).map((_, j) => (
+          <g key={`coord-y-${j}`}>
+            <text
+              x={padding - 15}
+              y={padding + j * cellSize + 4}
+              textAnchor="middle"
+              fontSize="12"
+              fontWeight="bold"
+              fill="#5d4037"
+            >
+              {getRelativeYLabel(j)}
+            </text>
+            <text
+              x={padding + width * cellSize + 15}
+              y={padding + j * cellSize + 4}
+              textAnchor="middle"
+              fontSize="12"
+              fontWeight="bold"
+              fill="#5d4037"
+            >
+              {getRelativeYLabel(j)}
+            </text>
+          </g>
         ))}
 
         {/* Star Points (Hoshi) - only if they fall within the range */}
@@ -108,13 +165,23 @@ export const GoBoard: React.FC<GoBoardProps> = ({
 
           return (
             <g key={`stone-${idx}`} className="pointer-events-none">
+              <defs>
+                <radialGradient id="blackStoneGradient" cx="30%" cy="30%" r="70%">
+                  <stop offset="0%" stopColor="#444" />
+                  <stop offset="100%" stopColor="#000" />
+                </radialGradient>
+                <radialGradient id="whiteStoneGradient" cx="30%" cy="30%" r="70%">
+                  <stop offset="0%" stopColor="#fff" />
+                  <stop offset="100%" stopColor="#ddd" />
+                </radialGradient>
+              </defs>
               <circle
                 cx={cx}
                 cy={cy}
                 r={cellSize / 2 - 2}
-                fill={stone.color === 'black' ? '#1a1a1a' : '#ffffff'}
-                stroke="#1a1a1a"
-                strokeWidth="1"
+                fill={stone.color === 'black' ? 'url(#blackStoneGradient)' : 'url(#whiteStoneGradient)'}
+                stroke={stone.color === 'black' ? '#000' : '#ccc'}
+                strokeWidth="0.5"
                 className="drop-shadow-md"
               />
               {isLast && (
@@ -123,6 +190,7 @@ export const GoBoard: React.FC<GoBoardProps> = ({
                   cy={cy}
                   r="4"
                   fill={stone.color === 'black' ? '#ffffff' : '#1a1a1a'}
+                  opacity="0.8"
                 />
               )}
             </g>

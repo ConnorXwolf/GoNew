@@ -94,6 +94,10 @@ const App: React.FC = () => {
   const [authError, setAuthError] = useState('');
   const [isAuthProcessing, setIsAuthProcessing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isZoomed, setIsZoomed] = useState(false);
+  const [zoomOffset, setZoomOffset] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef({ x: 0, y: 0 });
   
   const [user, authLoading] = useAuthState(auth);
   
@@ -202,6 +206,8 @@ const App: React.FC = () => {
     setPeekUsed(false);
     setHasAttemptedCurrent(false);
     setHasWonCurrent(false);
+    setZoomOffset({ x: 0, y: 0 });
+    setIsZoomed(false);
   }, [currentProblem, selectedLevel]);
 
   useEffect(() => {
@@ -386,6 +392,59 @@ const App: React.FC = () => {
     setCurrentProblemIndex((prev) => (prev - 1 + filteredProblems.length) % filteredProblems.length);
   };
 
+  const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!isZoomed) return;
+    
+    let clientX, clientY;
+    if ('touches' in e) {
+      if (e.touches.length !== 2) {
+        setIsDragging(false);
+        return;
+      }
+      clientX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      clientY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+    
+    setIsDragging(true);
+    dragStartRef.current = { x: clientX - zoomOffset.x, y: clientY - zoomOffset.y };
+  };
+
+  const handleDragMove = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!isDragging || !isZoomed) return;
+    
+    let clientX, clientY;
+    if ('touches' in e) {
+      if (e.touches.length !== 2) {
+        setIsDragging(false);
+        return;
+      }
+      clientX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      clientY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+    
+    setZoomOffset({
+      x: clientX - dragStartRef.current.x,
+      y: clientY - dragStartRef.current.y
+    });
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+  };
+
+  const toggleZoom = () => {
+    if (isZoomed) {
+      setZoomOffset({ x: 0, y: 0 });
+    }
+    setIsZoomed(!isZoomed);
+  };
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white font-sans selection:bg-orange-500/30 overflow-x-hidden">
       {/* Background Glow */}
@@ -395,47 +454,47 @@ const App: React.FC = () => {
       </div>
 
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-white/5 p-4 sm:p-6 flex justify-between items-center bg-black/50 backdrop-blur-xl">
-        <div className="flex items-center gap-4">
-          <div className="bg-gradient-to-br from-orange-400 to-orange-600 p-2.5 rounded-xl shadow-lg shadow-orange-500/20">
-            <BookOpen className="w-6 h-6 text-black" />
+      <header className="sticky top-0 z-50 border-b border-white/5 p-3 sm:p-6 flex justify-between items-center bg-black/50 backdrop-blur-xl">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <div className="bg-gradient-to-br from-orange-400 to-orange-600 p-2 sm:p-2.5 rounded-xl shadow-lg shadow-orange-500/20">
+            <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-black" />
           </div>
-          <div className="hidden sm:block">
-            <h1 className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">{t.title}</h1>
+          <div className="hidden md:block">
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">{t.title}</h1>
           </div>
         </div>
         
-        <div className="flex items-center gap-4 sm:gap-8">
+        <div className="flex items-center gap-2 sm:gap-6 lg:gap-8">
           {/* Language Switcher */}
-          <div className="flex items-center gap-2 bg-white/5 p-1 rounded-xl border border-white/10">
-            <Languages className="w-4 h-4 text-white/40 ml-2" />
+          <div className="flex items-center gap-1 sm:gap-2 bg-white/5 p-1 rounded-xl border border-white/10">
+            <Languages className="w-3 h-3 sm:w-4 sm:h-4 text-white/40 ml-1 sm:ml-2" />
             <select 
               value={language}
               onChange={(e) => setLanguage(e.target.value as Language)}
-              className="bg-transparent text-sm font-bold text-white/60 focus:outline-none pr-2 cursor-pointer hover:text-white transition-colors"
+              className="bg-transparent text-[10px] sm:text-sm font-bold text-white/60 focus:outline-none pr-1 sm:pr-2 cursor-pointer hover:text-white transition-colors"
             >
               <option value="zh" className="bg-[#1a1a1a]">中文</option>
-              <option value="en" className="bg-[#1a1a1a]">English</option>
+              <option value="en" className="bg-[#1a1a1a]">EN</option>
               <option value="ja" className="bg-[#1a1a1a]">日本語</option>
             </select>
           </div>
 
-          <div className="h-8 w-px bg-white/10 hidden sm:block" />
+          <div className="h-6 sm:h-8 w-px bg-white/10 hidden xs:block" />
           
           {/* Auth Button */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {authLoading ? (
-              <div className="w-8 h-8 rounded-full bg-white/5 animate-pulse" />
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white/5 animate-pulse" />
             ) : user ? (
-              <div className="flex items-center gap-3 bg-white/5 pl-2 pr-4 py-1.5 rounded-full border border-white/10 group">
-                <div className="w-7 h-7 rounded-full border border-white/20 bg-orange-500/20 flex items-center justify-center">
-                  <UserIconLucide className="w-4 h-4 text-orange-400" />
+              <div className="flex items-center gap-2 sm:gap-3 bg-white/5 pl-1.5 sm:pl-2 pr-3 sm:pr-4 py-1 sm:py-1.5 rounded-full border border-white/10 group">
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-white/20 bg-orange-500/20 flex items-center justify-center">
+                  <UserIconLucide className="w-3 h-3 sm:w-4 sm:h-4 text-orange-400" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-sm font-bold text-white/60 leading-none">{user.displayName || user.email}</span>
+                  <span className="text-[10px] sm:text-sm font-bold text-white/60 leading-none truncate max-w-[60px] sm:max-w-none">{user.displayName || user.email}</span>
                   <button 
                     onClick={() => logout()}
-                    className="text-sm text-white/30 uppercase tracking-widest hover:text-red-400 transition-colors text-left"
+                    className="text-[8px] sm:text-sm text-white/30 uppercase tracking-widest hover:text-red-400 transition-colors text-left"
                   >
                     {t.logout}
                   </button>
@@ -447,53 +506,53 @@ const App: React.FC = () => {
                   setAuthMode('login');
                   setShowAuthModal(true);
                 }}
-                className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all group"
+                className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all group"
               >
-                <LogIn className="w-4 h-4 text-white/60 group-hover:text-white" />
-                <span className="text-sm font-bold uppercase tracking-widest text-white/60 group-hover:text-white">{t.loginSync}</span>
+                <LogIn className="w-3 h-3 sm:w-4 sm:h-4 text-white/60 group-hover:text-white" />
+                <span className="text-[10px] sm:text-sm font-bold uppercase tracking-widest text-white/60 group-hover:text-white hidden xs:block">{t.loginSync}</span>
               </button>
             )}
           </div>
 
-          <div className="h-8 w-px bg-white/10 hidden sm:block" />
+          <div className="h-6 sm:h-8 w-px bg-white/10 hidden sm:block" />
           
           {selectedLevel !== '極限' && (
             <div className="hidden sm:flex flex-col items-end">
-              <span className="text-sm text-white/30 uppercase font-mono tracking-widest">{t.remainingAttempts}</span>
+              <span className="text-[10px] sm:text-sm text-white/30 uppercase font-mono tracking-widest">{t.remainingAttempts}</span>
               <div className="flex gap-1 mt-1">
                 {[...Array(3)].map((_, i) => (
                   <div 
                     key={i} 
-                    className={`w-2 h-2 rounded-full ${i < attempts ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'bg-white/10'}`} 
+                    className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${i < attempts ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'bg-white/10'}`} 
                   />
                 ))}
               </div>
             </div>
           )}
 
-          <div className="h-8 w-px bg-white/10 hidden sm:block" />
+          <div className="h-6 sm:h-8 w-px bg-white/10 hidden sm:block" />
           
           <button 
             onClick={() => setShowStats(true)}
             className="flex flex-col items-center group transition-all relative"
           >
-            <span className="text-sm text-white/30 uppercase font-mono tracking-widest group-hover:text-orange-400">{t.learningProgress}</span>
-            <BarChart3 className="w-5 h-5 text-orange-400 mt-1 group-hover:scale-110 transition-transform" />
+            <span className="text-[10px] sm:text-sm text-white/30 uppercase font-mono tracking-widest group-hover:text-orange-400 hidden sm:block">{t.learningProgress}</span>
+            <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-orange-400 mt-0.5 sm:mt-1 group-hover:scale-110 transition-transform" />
             {isSyncing && (
-              <Cloud className="w-3 h-3 text-blue-400 absolute -top-1 -right-2 animate-bounce" />
+              <Cloud className="w-2 h-2 sm:w-3 sm:h-3 text-blue-400 absolute -top-1 -right-1 sm:-right-2 animate-bounce" />
             )}
           </button>
 
-          <div className="h-8 w-px bg-white/10 hidden sm:block" />
+          <div className="h-6 sm:h-8 w-px bg-white/10 hidden sm:block" />
           
           <div className="hidden sm:flex flex-col items-end">
-            <span className="text-sm text-white/30 uppercase font-mono tracking-widest">{t.totalMastery}</span>
-            <span className="text-2xl font-mono text-orange-400 tabular-nums">{score.toString().padStart(4, '0')}</span>
+            <span className="text-[10px] sm:text-sm text-white/30 uppercase font-mono tracking-widest">{t.totalMastery}</span>
+            <span className="text-lg sm:text-2xl font-mono text-orange-400 tabular-nums">{score.toString().padStart(4, '0')}</span>
           </div>
-          <div className="h-8 w-px bg-white/10 hidden sm:block" />
-          <div className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-full border border-white/10">
-            <Target className="w-4 h-4 text-blue-400" />
-            <span className="text-sm font-bold uppercase tracking-wider text-blue-400">{t.problem} {currentProblemIndex + 1} / {filteredProblems.length}</span>
+          <div className="h-6 sm:h-8 w-px bg-white/10 hidden xs:block" />
+          <div className="flex items-center gap-1.5 sm:gap-3 bg-white/5 px-2 sm:px-4 py-1 sm:py-2 rounded-full border border-white/10">
+            <Target className="w-3 h-3 sm:w-4 sm:h-4 text-blue-400" />
+            <span className="text-[10px] sm:text-sm font-bold uppercase tracking-wider text-blue-400">{currentProblemIndex + 1}/{filteredProblems.length}</span>
           </div>
         </div>
       </header>
@@ -542,7 +601,7 @@ const App: React.FC = () => {
           </div>
 
           {/* Status Bar (Timer & Mode) */}
-          <div className="w-full h-12 flex items-center justify-center">
+          <div className="w-full h-10 sm:h-12 flex items-center justify-center">
             <AnimatePresence mode="wait">
               {status === 'memorizing' && (
                 <motion.div 
@@ -550,12 +609,12 @@ const App: React.FC = () => {
                   initial={{ opacity: 0, scale: 0.9, y: 10 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.9, y: -10 }}
-                  className="flex items-center gap-4 bg-orange-500 text-black px-6 py-2 rounded-2xl shadow-xl shadow-orange-500/20 border border-white/20"
+                  className="flex items-center gap-2 sm:gap-4 bg-orange-500 text-black px-4 sm:px-6 py-1.5 sm:py-2 rounded-2xl shadow-xl shadow-orange-500/20 border border-white/20"
                 >
-                  <Brain className="w-5 h-5 animate-pulse" />
+                  <Brain className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" />
                   <div className="flex flex-col">
-                    <span className="text-sm uppercase font-black tracking-widest leading-none opacity-60">{t.memorizing}</span>
-                    <span className="text-xl font-mono font-black tabular-nums leading-none">{memoryTimer}s</span>
+                    <span className="text-[10px] sm:text-sm uppercase font-black tracking-widest leading-none opacity-60">{t.memorizing}</span>
+                    <span className="text-lg sm:text-xl font-mono font-black tabular-nums leading-none">{memoryTimer}s</span>
                   </div>
                 </motion.div>
               )}
@@ -565,12 +624,12 @@ const App: React.FC = () => {
                   initial={{ opacity: 0, scale: 0.9, y: 10 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.9, y: -10 }}
-                  className="flex items-center gap-4 bg-blue-500 text-white px-6 py-2 rounded-2xl shadow-xl shadow-blue-500/20 border border-white/20"
+                  className="flex items-center gap-2 sm:gap-4 bg-blue-500 text-white px-4 sm:px-6 py-1.5 sm:py-2 rounded-2xl shadow-xl shadow-blue-500/20 border border-white/20"
                 >
-                  <Brain className="w-5 h-5" />
+                  <Brain className="w-4 h-4 sm:w-5 sm:h-5" />
                   <div className="flex flex-col">
-                    <span className="text-sm uppercase font-black tracking-widest leading-none opacity-60">{t.recallMode}</span>
-                    <span className="text-sm font-black uppercase tracking-widest leading-none">{t.inProgress}</span>
+                    <span className="text-[10px] sm:text-sm uppercase font-black tracking-widest leading-none opacity-60">{t.recallMode}</span>
+                    <span className="text-[10px] sm:text-sm font-black uppercase tracking-widest leading-none">{t.inProgress}</span>
                   </div>
                 </motion.div>
               )}
@@ -579,12 +638,34 @@ const App: React.FC = () => {
 
           <div className="relative group w-full flex justify-center">
             {/* Board Container with Hardware feel */}
-            <div className="relative p-2 sm:p-4 bg-[#1a1a1a] rounded-[2rem] border border-white/10 shadow-2xl shadow-black">
-              <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-[2rem] pointer-events-none" />
+            <div 
+              className={`relative p-2 sm:p-4 bg-[#1a1a1a] rounded-[2rem] border border-white/10 shadow-2xl shadow-black overflow-hidden ${isZoomed ? 'cursor-grab active:cursor-grabbing' : ''}`}
+              onMouseDown={handleDragStart}
+              onMouseMove={handleDragMove}
+              onMouseUp={handleDragEnd}
+              onMouseLeave={handleDragEnd}
+              onTouchStart={handleDragStart}
+              onTouchMove={handleDragMove}
+              onTouchEnd={handleDragEnd}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-[2rem] pointer-events-none z-20" />
               
               <motion.div
-                animate={status === 'idle' ? { filter: 'blur(40px)', opacity: 0.1 } : { filter: 'blur(0px)', opacity: 1 }}
-                transition={{ duration: 0.5 }}
+                animate={{
+                  filter: status === 'idle' ? 'blur(40px)' : 'blur(0px)',
+                  opacity: status === 'idle' ? 0.1 : 1,
+                  scale: isZoomed ? 1.5 : 1,
+                  x: zoomOffset.x,
+                  y: zoomOffset.y
+                }}
+                transition={{ 
+                  scale: { duration: 0.3 },
+                  filter: { duration: 0.5 },
+                  opacity: { duration: 0.5 },
+                  x: { type: 'spring', damping: 25, stiffness: 200 },
+                  y: { type: 'spring', damping: 25, stiffness: 200 }
+                }}
+                className="relative z-10"
               >
                 {currentProblem ? (
                   <GoBoard 
@@ -610,11 +691,11 @@ const App: React.FC = () => {
                   exit={{ scale: 0.8, opacity: 0, y: -20 }}
                   className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
                 >
-                  <div className="bg-emerald-500 text-black px-10 py-5 rounded-2xl flex items-center gap-4 shadow-[0_0_50px_rgba(16,185,129,0.4)]">
-                    <CheckCircle2 className="w-10 h-10" />
+                  <div className="bg-emerald-500 text-black px-6 sm:px-10 py-3 sm:py-5 rounded-2xl flex items-center gap-3 sm:gap-4 shadow-[0_0_50px_rgba(16,185,129,0.4)]">
+                    <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10" />
                     <div className="flex flex-col">
-                      <span className="text-2xl font-black uppercase italic leading-none">{t.correct}</span>
-                      <span className="text-sm font-bold uppercase tracking-widest opacity-80">{t.masteredPattern}</span>
+                      <span className="text-xl sm:text-2xl font-black uppercase italic leading-none">{t.correct}</span>
+                      <span className="text-xs sm:text-sm font-bold uppercase tracking-widest opacity-80">{t.masteredPattern}</span>
                     </div>
                   </div>
                 </motion.div>
@@ -626,11 +707,11 @@ const App: React.FC = () => {
                   exit={{ scale: 0.8, opacity: 0, x: -20 }}
                   className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
                 >
-                  <div className="bg-red-500 text-white px-10 py-5 rounded-2xl flex items-center gap-4 shadow-[0_0_50px_rgba(239,68,68,0.4)]">
-                    <XCircle className="w-10 h-10" />
+                  <div className="bg-red-500 text-white px-6 sm:px-10 py-3 sm:py-5 rounded-2xl flex items-center gap-3 sm:gap-4 shadow-[0_0_50px_rgba(239,68,68,0.4)]">
+                    <XCircle className="w-8 h-8 sm:w-10 sm:h-10" />
                     <div className="flex flex-col">
-                      <span className="text-2xl font-black uppercase italic leading-none">{t.wrong}</span>
-                      <span className="text-sm font-bold uppercase tracking-widest opacity-80">{t.tryAgain}</span>
+                      <span className="text-xl sm:text-2xl font-black uppercase italic leading-none">{t.wrong}</span>
+                      <span className="text-xs sm:text-sm font-bold uppercase tracking-widest opacity-80">{t.tryAgain}</span>
                     </div>
                   </div>
                 </motion.div>
@@ -689,6 +770,16 @@ const App: React.FC = () => {
                     <Eraser className="w-4 h-4" />
                     <span className="text-sm uppercase tracking-widest">{t.eraser}</span>
                   </button>
+                  <div className="w-px h-4 bg-white/10 mx-1" />
+                  <button
+                    onClick={toggleZoom}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+                      isZoomed ? 'bg-orange-500 text-black font-bold' : 'text-white/40 hover:text-orange-400'
+                    }`}
+                  >
+                    <Eye className="w-4 h-4" />
+                    <span className="text-sm uppercase tracking-widest">{t.magnify}</span>
+                  </button>
                 </div>
 
                 {selectedLevel !== '極限' && !peekUsed && (
@@ -703,53 +794,59 @@ const App: React.FC = () => {
               </motion.div>
             )}
 
-            <div className="flex items-center gap-4 bg-white/5 p-2 rounded-2xl border border-white/10 backdrop-blur-md">
-              <button 
-                onClick={prevProblem}
-                className="p-4 rounded-xl hover:bg-white/10 text-white/60 hover:text-white transition-all active:scale-95"
-                title="上一題"
-              >
-                <ChevronLeft className="w-6 h-6" />
-              </button>
-              <div className="h-8 w-px bg-white/10" />
-              <button 
-                onClick={resetProblem}
-                className="px-8 py-4 rounded-xl hover:bg-white/10 flex items-center gap-3 transition-all active:scale-95 group"
-              >
-                <RotateCcw className="w-5 h-5 text-orange-500 group-hover:rotate-[-180deg] transition-transform duration-500" />
-                <span className="font-bold uppercase tracking-widest text-sm">{t.reset}</span>
-              </button>
-              <div className="h-8 w-px bg-white/10" />
-              {status === 'idle' ? (
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 bg-white/5 p-2 rounded-2xl border border-white/10 backdrop-blur-md w-full sm:w-auto">
+              <div className="flex items-center gap-2">
                 <button 
-                  onClick={startTraining}
-                  className="px-8 py-4 rounded-xl bg-orange-500 hover:bg-orange-400 text-black flex items-center gap-3 transition-all active:scale-95 group shadow-lg shadow-orange-500/20"
+                  onClick={prevProblem}
+                  className="p-3 sm:p-4 rounded-xl hover:bg-white/10 text-white/60 hover:text-white transition-all active:scale-95"
+                  title="上一題"
                 >
-                  <Brain className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold uppercase tracking-widest text-sm">{t.startTraining}</span>
+                  <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
-              ) : status === 'placing' ? (
+                <div className="h-6 sm:h-8 w-px bg-white/10" />
                 <button 
-                  onClick={checkAnswer}
-                  className="px-8 py-4 rounded-xl bg-blue-500 hover:bg-blue-400 text-white flex items-center gap-3 transition-all active:scale-95 group shadow-lg shadow-blue-500/20"
+                  onClick={resetProblem}
+                  className="px-4 sm:px-8 py-3 sm:py-4 rounded-xl hover:bg-white/10 flex items-center gap-2 sm:gap-3 transition-all active:scale-95 group"
                 >
-                  <CheckCircle2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                  <span className="font-bold uppercase tracking-widest text-sm">{t.checkAnswer}</span>
+                  <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500 group-hover:rotate-[-180deg] transition-transform duration-500" />
+                  <span className="font-bold uppercase tracking-widest text-xs sm:text-sm">{t.reset}</span>
                 </button>
-              ) : (
-                <div className="px-8 py-4 flex items-center gap-3 text-white/20">
-                  <Brain className="w-5 h-5" />
-                  <span className="font-bold uppercase tracking-widest text-sm">{t.inProgress}...</span>
-                </div>
-              )}
-              <div className="h-8 w-px bg-white/10" />
-              <button 
-                onClick={nextProblem}
-                className="p-4 rounded-xl hover:bg-white/10 text-white/60 hover:text-white transition-all active:scale-95"
-                title="下一題"
-              >
-                <ChevronRight className="w-6 h-6" />
-              </button>
+              </div>
+              
+              <div className="h-6 sm:h-8 w-px bg-white/10 hidden sm:block" />
+              
+              <div className="flex items-center gap-2">
+                {status === 'idle' ? (
+                  <button 
+                    onClick={startTraining}
+                    className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-orange-500 hover:bg-orange-400 text-black flex items-center gap-2 sm:gap-3 transition-all active:scale-95 group shadow-lg shadow-orange-500/20"
+                  >
+                    <Brain className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform" />
+                    <span className="font-bold uppercase tracking-widest text-xs sm:text-sm">{t.startTraining}</span>
+                  </button>
+                ) : status === 'placing' ? (
+                  <button 
+                    onClick={checkAnswer}
+                    className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-blue-500 hover:bg-blue-400 text-white flex items-center gap-2 sm:gap-3 transition-all active:scale-95 group shadow-lg shadow-blue-500/20"
+                  >
+                    <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform" />
+                    <span className="font-bold uppercase tracking-widest text-xs sm:text-sm">{t.checkAnswer}</span>
+                  </button>
+                ) : (
+                  <div className="px-6 sm:px-8 py-3 sm:py-4 flex items-center gap-2 sm:gap-3 text-white/20">
+                    <Brain className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="font-bold uppercase tracking-widest text-xs sm:text-sm">{t.inProgress}...</span>
+                  </div>
+                )}
+                <div className="h-6 sm:h-8 w-px bg-white/10" />
+                <button 
+                  onClick={nextProblem}
+                  className="p-3 sm:p-4 rounded-xl hover:bg-white/10 text-white/60 hover:text-white transition-all active:scale-95"
+                  title="下一題"
+                >
+                  <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+                </button>
+              </div>
             </div>
 
             {/* Next Problem Button after Completion */}
@@ -797,14 +894,14 @@ const App: React.FC = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-2xl bg-[#1a1a1a] border border-white/10 rounded-[2.5rem] p-8 shadow-2xl"
+              className="relative w-full max-w-2xl bg-[#1a1a1a] border border-white/10 rounded-[2rem] sm:rounded-[2.5rem] p-4 sm:p-8 shadow-2xl overflow-y-auto max-h-[90vh]"
             >
-              <div className="flex justify-between items-center mb-8">
-                <div className="flex items-center gap-3">
-                  <div className="bg-orange-500/20 p-2 rounded-xl">
-                    <BarChart3 className="w-6 h-6 text-orange-500" />
+              <div className="flex justify-between items-center mb-6 sm:mb-8">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="bg-orange-500/20 p-1.5 sm:p-2 rounded-xl">
+                    <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-orange-500" />
                   </div>
-                  <h2 className="text-2xl font-bold">{t.statsTitle}</h2>
+                  <h2 className="text-xl sm:text-2xl font-bold">{t.statsTitle}</h2>
                 </div>
                 <button 
                   onClick={() => setShowStats(false)}
@@ -875,14 +972,14 @@ const App: React.FC = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-md bg-[#1a1a1a] border border-white/10 rounded-[2.5rem] p-8 shadow-2xl"
+              className="relative w-full max-w-md bg-[#1a1a1a] border border-white/10 rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl"
             >
-              <div className="flex justify-between items-center mb-8">
-                <div className="flex items-center gap-3">
-                  <div className="bg-orange-500/20 p-2 rounded-xl">
-                    <LogIn className="w-6 h-6 text-orange-500" />
+              <div className="flex justify-between items-center mb-6 sm:mb-8">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="bg-orange-500/20 p-1.5 sm:p-2 rounded-xl">
+                    <LogIn className="w-5 h-5 sm:w-6 sm:h-6 text-orange-500" />
                   </div>
-                  <h2 className="text-2xl font-bold">{authMode === 'login' ? t.login : t.register}</h2>
+                  <h2 className="text-xl sm:text-2xl font-bold">{authMode === 'login' ? t.login : t.register}</h2>
                 </div>
                 <button 
                   onClick={() => setShowAuthModal(false)}
