@@ -23,7 +23,7 @@ export const GoBoard: React.FC<GoBoardProps> = ({
   const width = xEnd - xStart;
   const height = yEnd - yStart;
   const cellSize = 40;
-  const padding = 35; // Increased padding for coordinates
+  const padding = 50; // Increased padding to move coordinates further away
 
   const getXLabel = (val: number) => {
     const labels = "ABCDEFGHJKLMNOPQRST";
@@ -41,7 +41,7 @@ export const GoBoard: React.FC<GoBoardProps> = ({
   return (
     <div className="relative inline-block bg-[#e3c16f] p-1 sm:p-2 rounded-lg shadow-xl border-2 sm:border-4 border-[#8b5a2b] w-full max-w-[600px]">
       <svg
-        viewBox={`0 0 ${(width + 1) * cellSize + padding * 2} ${(height + 1) * cellSize + padding * 2}`}
+        viewBox={`0 0 ${width * cellSize + padding * 2} ${height * cellSize + padding * 2}`}
         className="w-full h-auto cursor-pointer block"
       >
         {/* Grid Lines */}
@@ -73,8 +73,9 @@ export const GoBoard: React.FC<GoBoardProps> = ({
           <g key={`coord-x-${i}`}>
             <text
               x={padding + i * cellSize}
-              y={padding - 12}
+              y={padding / 2}
               textAnchor="middle"
+              dominantBaseline="middle"
               fontSize="12"
               fontWeight="bold"
               fill="#5d4037"
@@ -83,8 +84,9 @@ export const GoBoard: React.FC<GoBoardProps> = ({
             </text>
             <text
               x={padding + i * cellSize}
-              y={padding + height * cellSize + 20}
+              y={padding + height * cellSize + padding / 2}
               textAnchor="middle"
+              dominantBaseline="middle"
               fontSize="12"
               fontWeight="bold"
               fill="#5d4037"
@@ -96,9 +98,10 @@ export const GoBoard: React.FC<GoBoardProps> = ({
         {Array.from({ length: height + 1 }).map((_, j) => (
           <g key={`coord-y-${j}`}>
             <text
-              x={padding - 15}
-              y={padding + j * cellSize + 4}
+              x={padding / 2}
+              y={padding + j * cellSize}
               textAnchor="middle"
+              dominantBaseline="middle"
               fontSize="12"
               fontWeight="bold"
               fill="#5d4037"
@@ -106,9 +109,10 @@ export const GoBoard: React.FC<GoBoardProps> = ({
               {getRelativeYLabel(j)}
             </text>
             <text
-              x={padding + width * cellSize + 15}
-              y={padding + j * cellSize + 4}
+              x={padding + width * cellSize + padding / 2}
+              y={padding + j * cellSize}
               textAnchor="middle"
+              dominantBaseline="middle"
               fontSize="12"
               fontWeight="bold"
               fill="#5d4037"

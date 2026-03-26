@@ -20,6 +20,7 @@ import {
   Cloud,
   Eye,
   EyeOff,
+  Home,
   Mail,
   Lock,
   Loader2,
@@ -382,6 +383,17 @@ const App: React.FC = () => {
     }
   };
 
+  const handleExit = () => {
+    setStatus('idle');
+    setStones([]);
+    setLastMove(undefined);
+    setPeekUsed(false);
+    setHasAttemptedCurrent(false);
+    setHasWonCurrent(false);
+    setIsZoomed(false);
+    setZoomOffset({ x: 0, y: 0 });
+  };
+
   const nextProblem = () => {
     if (filteredProblems.length === 0) return;
     setCurrentProblemIndex((prev) => (prev + 1) % filteredProblems.length);
@@ -636,18 +648,34 @@ const App: React.FC = () => {
             </AnimatePresence>
           </div>
 
-          <div className="relative group w-full flex justify-center">
-            {/* Board Container with Hardware feel */}
-            <div 
-              className={`relative p-2 sm:p-4 bg-[#1a1a1a] rounded-[2rem] border border-white/10 shadow-2xl shadow-black overflow-hidden ${isZoomed ? 'cursor-grab active:cursor-grabbing' : ''}`}
-              onMouseDown={handleDragStart}
-              onMouseMove={handleDragMove}
-              onMouseUp={handleDragEnd}
-              onMouseLeave={handleDragEnd}
-              onTouchStart={handleDragStart}
-              onTouchMove={handleDragMove}
-              onTouchEnd={handleDragEnd}
-            >
+          <div className="w-full flex justify-center">
+            <div className="relative group">
+              {/* Exit Button - Top Left Above Board */}
+              {status !== 'idle' && (
+                <button
+                  onClick={handleExit}
+                  className="absolute -top-14 left-0 z-30 p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/60 hover:text-white transition-all group/exit"
+                  title={t.exit}
+                >
+                  <Home className="w-5 h-5" />
+                  <span className="absolute left-full ml-2 px-2 py-1 bg-black/80 text-white text-xs rounded opacity-0 group-hover/exit:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                    {t.exit}
+                  </span>
+                </button>
+              )}
+
+              {/* Board Container with Hardware feel */}
+              <div 
+                className={`relative p-2 sm:p-4 bg-[#1a1a1a] rounded-[2rem] border border-white/10 shadow-2xl shadow-black overflow-hidden ${isZoomed ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                onMouseDown={handleDragStart}
+                onMouseMove={handleDragMove}
+                onMouseUp={handleDragEnd}
+                onMouseLeave={handleDragEnd}
+                onTouchStart={handleDragStart}
+                onTouchMove={handleDragMove}
+                onTouchEnd={handleDragEnd}
+              >
+
               <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-[2rem] pointer-events-none z-20" />
               
               <motion.div
@@ -718,6 +746,7 @@ const App: React.FC = () => {
               )}
             </AnimatePresence>
           </div>
+        </div>
 
           {/* Controls */}
           <div className="flex flex-col items-center gap-6 w-full">
