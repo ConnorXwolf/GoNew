@@ -94,7 +94,7 @@ function AuthModal({ lang }: { lang: Language }) {
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader className="flex flex-col items-center">
           <div className="w-20 h-20 mb-4 rounded-2xl overflow-hidden shadow-md border border-stone-200 dark:border-stone-800">
-            <img src="/logo.png" alt="GoMemo Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            <img src="/logo.ico" alt="GoMemo Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           </div>
           <DialogTitle className="text-2xl font-bold text-center">{t.welcome}</DialogTitle>
           <DialogDescription className="text-center">
@@ -566,7 +566,7 @@ function GameContent() {
         <header className="flex flex-col sm:flex-row justify-between items-center mb-6 sm:mb-8 bg-white dark:bg-stone-900 p-3 sm:p-4 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 gap-3 sm:gap-4">
           <div className="flex items-center justify-between w-full sm:w-auto gap-2 sm:gap-4">
             <h1 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-stone-100 flex items-center gap-3">
-              <img src="/logo.png" alt="Logo" className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg shadow-sm border border-stone-200 dark:border-stone-800 object-cover" referrerPolicy="no-referrer" />
+              <img src="/logo.ico" alt="Logo" className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg shadow-sm border border-stone-200 dark:border-stone-800 object-cover" referrerPolicy="no-referrer" />
               GoMemo
             </h1>
             
