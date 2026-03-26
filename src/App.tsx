@@ -110,9 +110,11 @@ function AuthModal({ lang }: { lang: Language }) {
             <span className="text-3xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">GoMemo</span>
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-white to-stone-200 shadow-md border border-stone-300"></div>
           </div>
-          <DialogTitle className="text-2xl font-bold text-center">
-            {isResetMode ? t.resetPassword : t.welcome}
-          </DialogTitle>
+          {isResetMode && (
+            <DialogTitle className="text-2xl font-bold text-center">
+              {t.resetPassword}
+            </DialogTitle>
+          )}
           <DialogDescription className="text-center">
             {isResetMode ? t.email : t.loginDesc}
           </DialogDescription>

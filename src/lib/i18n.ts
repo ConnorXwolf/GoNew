@@ -4,7 +4,6 @@ export type Language = 'zh' | 'en' | 'ja' | 'es';
 export const translations = {
   zh: {
     title: 'GoMemo',
-    welcome: '歡迎來到 GoMemo',
     loginDesc: '登入以同步您的進度與成就',
     login: '登入',
     register: '註冊',
@@ -93,7 +92,6 @@ export const translations = {
   },
   en: {
     title: 'GoMemo',
-    welcome: 'Welcome to GoMemo',
     loginDesc: 'Log in to sync your progress and achievements',
     login: 'Login',
     register: 'Register',
@@ -182,7 +180,6 @@ export const translations = {
   },
   ja: {
     title: 'GoMemo',
-    welcome: 'GoMemoへようこそ',
     loginDesc: 'ログインして進捗と実績を同期しましょう',
     login: 'ログイン',
     register: '登録',
@@ -271,7 +268,6 @@ export const translations = {
   },
   es: {
     title: 'GoMemo',
-    welcome: 'Bienvenido a GoMemo',
     loginDesc: 'Inicia sesión para sincronizar tu progreso y logros',
     login: 'Iniciar sesión',
     register: 'Registrarse',
