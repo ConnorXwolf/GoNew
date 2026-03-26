@@ -274,24 +274,27 @@ function GameContent() {
       return;
     }
 
-    // Subscribe to Firestore updates
-    const userRef = doc(db, 'users', user.uid);
-    const unsubscribe = onSnapshot(userRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.data();
-        // Merge Firestore stats with local structure
-        setStats(prev => ({
-          ...prev,
-          totalPlayed: data.stats?.totalPlayed || 0,
-          totalCorrect: data.stats?.totalCorrect || 0,
-          maxStreak: data.stats?.maxStreak || 0,
-          achievements: data.achievements || [],
-          // We can expand this to sync level-specific stats if needed
-        }));
-      }
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
-    });
+        // Subscribe to Firestore updates
+        const userRef = doc(db, 'users', user.uid);
+        const unsubscribe = onSnapshot(userRef, (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.data();
+            // Merge Firestore stats with local structure
+            setStats(prev => ({
+              ...prev,
+              totalPlayed: data.stats?.totalPlayed || 0,
+              totalCorrect: data.stats?.totalCorrect || 0,
+              maxStreak: data.stats?.maxStreak || 0,
+              levelPlays: data.stats?.levelPlays || {},
+              levelCorrect: data.stats?.levelCorrect || {},
+              levelMaxStreak: data.stats?.levelMaxStreak || {},
+              levelCurrentStreak: data.stats?.levelCurrentStreak || {},
+              achievements: data.achievements || [],
+            }));
+          }
+        }, (error) => {
+          handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
+        });
 
     return () => unsubscribe();
   }, [user]);
@@ -313,6 +316,41 @@ function GameContent() {
       handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
     } finally {
       setIsSyncing(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const hasReset = localStorage.getItem('manual_reset_20260325');
+    if (!hasReset) {
+      const performReset = async () => {
+        const resetStats = { ...DEFAULT_STATS };
+        setStats(resetStats);
+        localStorage.setItem('goMemoryStats', JSON.stringify(resetStats));
+        
+        if (user) {
+          try {
+            const userRef = doc(db, 'users', user.uid);
+            await updateDoc(userRef, {
+              stats: {
+                totalPlayed: 0,
+                totalCorrect: 0,
+                maxStreak: 0,
+                lastSolvedDate: new Date().toISOString(),
+                levelPlays: {},
+                levelCorrect: {},
+                levelMaxStreak: {},
+                levelCurrentStreak: {}
+              },
+              achievements: []
+            });
+          } catch (error) {
+            console.error("Manual reset failed:", error);
+          }
+        }
+        localStorage.setItem('manual_reset_20260325', 'true');
+        toast.success("Records have been reset.");
+      };
+      performReset();
     }
   }, [user]);
 
@@ -353,6 +391,8 @@ function GameContent() {
     const corrects = newStats.levelCorrect[levelId] || 0;
 
     const milestones = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+    
+    // Per-level milestones
     milestones.forEach(m => {
       checkAndUnlock(`${levelId}_play_${m}`, plays >= m);
       checkAndUnlock(`${levelId}_correct_${m}`, corrects >= m);
@@ -464,6 +504,10 @@ function GameContent() {
           'stats.totalCorrect': increment(1),
           'stats.maxStreak': Math.max(stats.maxStreak, newStreak),
           'stats.lastSolvedDate': new Date().toISOString(),
+          [`stats.levelPlays.${currentLevel.id}`]: increment(1),
+          [`stats.levelCorrect.${currentLevel.id}`]: increment(1),
+          [`stats.levelCurrentStreak.${currentLevel.id}`]: currentLevelStreak,
+          [`stats.levelMaxStreak.${currentLevel.id}`]: Math.max(stats.levelMaxStreak[currentLevel.id] || 0, currentLevelStreak),
           'achievements': newStats.achievements // Sync updated achievements
         });
       }
@@ -490,6 +534,8 @@ function GameContent() {
         if (user) {
           syncToFirestore({
             'stats.totalPlayed': increment(1),
+            [`stats.levelPlays.${currentLevel.id}`]: increment(1),
+            [`stats.levelCurrentStreak.${currentLevel.id}`]: 0,
             'achievements': newStats.achievements
           });
         }
@@ -651,6 +697,44 @@ function GameContent() {
                         <p className="text-stone-500 dark:text-stone-400 text-[10px] sm:text-xs font-bold mb-1 uppercase tracking-wider">{t.maxStreak}</p>
                         <p className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400">{stats.maxStreak}</p>
                       </Card>
+                    </div>
+
+                    <h3 className="text-lg font-bold text-stone-700 dark:text-stone-200 mb-4 flex items-center gap-2">
+                      <TrendingUp className="text-emerald-500" /> {t.level} {t.learningRecord}
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
+                      {LEVEL_ORDER.map(key => {
+                        const level = LEVELS[key];
+                        const plays = stats.levelPlays[level.id] || 0;
+                        const corrects = stats.levelCorrect[level.id] || 0;
+                        const maxStreak = stats.levelMaxStreak[level.id] || 0;
+                        const winRate = plays > 0 ? Math.round((corrects / plays) * 100) : 0;
+                        
+                        return (
+                          <Card key={level.id} className="bg-stone-50 dark:bg-stone-800 border-none shadow-none p-4">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="font-bold text-stone-800 dark:text-stone-100">{level.name(lang)}</span>
+                              <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                {winRate}% {t.correct}
+                              </Badge>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 text-[10px] sm:text-xs">
+                              <div>
+                                <p className="text-stone-500">{t.totalPlayed}</p>
+                                <p className="font-bold">{plays}</p>
+                              </div>
+                              <div>
+                                <p className="text-stone-500">{t.totalCorrect}</p>
+                                <p className="font-bold">{corrects}</p>
+                              </div>
+                              <div>
+                                <p className="text-stone-500">{t.maxStreak}</p>
+                                <p className="font-bold">{maxStreak}</p>
+                              </div>
+                            </div>
+                          </Card>
+                        );
+                      })}
                     </div>
 
                     <h3 className="text-lg font-bold text-stone-700 dark:text-stone-200 mb-4 flex items-center gap-2">

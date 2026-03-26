@@ -20,7 +20,11 @@
             "totalPlayed": { "type": "integer", "description": "Total number of games played" },
             "totalCorrect": { "type": "integer", "description": "Total number of correct answers" },
             "maxStreak": { "type": "integer", "description": "Highest streak achieved" },
-            "lastSolvedDate": { "type": "string", "format": "date-time", "description": "Last time the user solved a problem" }
+            "lastSolvedDate": { "type": "string", "format": "date-time", "description": "Last time the user solved a problem" },
+            "levelPlays": { "type": "object", "description": "Total plays per level" },
+            "levelCorrect": { "type": "object", "description": "Total correct per level" },
+            "levelMaxStreak": { "type": "object", "description": "Max streak per level" },
+            "levelCurrentStreak": { "type": "object", "description": "Current streak per level" }
           }
         },
         "achievements": {

@@ -128,7 +128,11 @@ const handleUserDoc = async (user: any, name?: string) => {
           totalPlayed: 0,
           totalCorrect: 0,
           maxStreak: 0,
-          lastSolvedDate: new Date().toISOString()
+          lastSolvedDate: new Date().toISOString(),
+          levelPlays: {},
+          levelCorrect: {},
+          levelMaxStreak: {},
+          levelCurrentStreak: {}
         },
         achievements: []
       });
