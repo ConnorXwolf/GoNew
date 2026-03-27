@@ -9,13 +9,9 @@ export const translations = {
     loginSync: "登入同步",
     logout: "登出",
     remainingAttempts: "剩餘機會",
-    quadrant: "方位分區",
     difficulty: "難度等級",
     all: "全部",
-    topLeft: "左上",
-    topRight: "右上",
-    bottomLeft: "左下",
-    bottomRight: "右下",
+    toddler: "幼幼班",
     beginner: "初學",
     basic: "基礎",
     intermediate: "中階",
@@ -59,7 +55,8 @@ export const translations = {
     passwordMismatch: "兩次輸入的密碼不一致",
     authFailed: "認證失敗",
     footer: "手筋辭典 • 經典題目 • 棋型記憶",
-    noProblems: "此分類下無題目"
+    noProblems: "此分類下無題目",
+    selectProblemToStart: "點擊下方按鈕開始挑戰"
   },
   en: {
     title: "GoMemo • Pattern Memory",
@@ -69,13 +66,9 @@ export const translations = {
     loginSync: "Login & Sync",
     logout: "Logout",
     remainingAttempts: "Attempts",
-    quadrant: "Quadrant",
     difficulty: "Difficulty",
     all: "All",
-    topLeft: "Top Left",
-    topRight: "Top Right",
-    bottomLeft: "Bottom Left",
-    bottomRight: "Bottom Right",
+    toddler: "Toddler",
     beginner: "Beginner",
     basic: "Basic",
     intermediate: "Intermediate",
@@ -119,7 +112,8 @@ export const translations = {
     passwordMismatch: "Passwords do not match",
     authFailed: "Authentication failed",
     footer: "Tesuji Dictionary • Classic Problems • Pattern Memory",
-    noProblems: "No problems in this category"
+    noProblems: "No problems in this category",
+    selectProblemToStart: "Click the button below to start"
   },
   ja: {
     title: "GoMemo • 棋型記憶トレーニング",
@@ -129,13 +123,9 @@ export const translations = {
     loginSync: "ログイン同期",
     logout: "ログアウト",
     remainingAttempts: "残り回数",
-    quadrant: "エリア選択",
     difficulty: "難易度",
     all: "全て",
-    topLeft: "左上",
-    topRight: "右上",
-    bottomLeft: "左下",
-    bottomRight: "右下",
+    toddler: "幼児",
     beginner: "入門",
     basic: "初級",
     intermediate: "中級",
@@ -179,6 +169,7 @@ export const translations = {
     passwordMismatch: "パスワードが一致しません",
     authFailed: "認証に失敗しました",
     footer: "手筋辞典 • 古典問題 • 棋型記憶",
-    noProblems: "このカテゴリーには問題がありません"
+    noProblems: "このカテゴリーには問題がありません",
+    selectProblemToStart: "下のボタンを押して開始"
   }
 };

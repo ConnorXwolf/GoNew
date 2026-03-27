@@ -4,6 +4,7 @@ export interface Stone {
   x: number;
   y: number;
   color: Color;
+  moveNumber?: number;
 }
 
 export interface Problem {

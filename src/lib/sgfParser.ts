@@ -37,15 +37,23 @@ export function parseSGF(sgf: string, id: string): Problem | null {
   extractStones('AB', 'black');
   extractStones('AW', 'white');
 
-  // Extract solution (first move in the sequence)
-  // Look for the first move after the initial setup
-  const moveMatch = sgf.match(/;([BW])\[([a-s]{2})\]/);
-
-  if (moveMatch) {
+  // Extract solution (full sequence of moves)
+  // Look for all moves in the main branch
+  const moveRegex = /;([BW])\[([a-s]{2})\]/g;
+  let moveMatch;
+  while ((moveMatch = moveRegex.exec(sgf)) !== null) {
     const color = moveMatch[1] === 'B' ? 'black' : 'white';
     const coord = moveMatch[2];
-    solution.push({ x: charToCoord(coord[0]), y: charToCoord(coord[1]), color });
-    turn = color;
+    solution.push({ 
+      x: charToCoord(coord[0]), 
+      y: charToCoord(coord[1]), 
+      color,
+      moveNumber: solution.length + 1
+    });
+  }
+
+  if (solution.length > 0) {
+    turn = solution[0].color;
   }
 
   // Extract metadata
@@ -61,16 +69,19 @@ export function parseSGF(sgf: string, id: string): Problem | null {
     explanation = comment;
   }
 
-  if (stones.length === 0 || solution.length === 0) return null;
+  if (solution.length === 0) return null;
 
   // Calculate view range based on stones
   const allX = [...stones.map(s => s.x), ...solution.map(s => s.x)];
   const allY = [...stones.map(s => s.y), ...solution.map(s => s.y)];
   
-  const xMin = Math.max(0, Math.min(...allX) - 2);
-  const xMax = Math.min(18, Math.max(...allX) + 2);
-  const yMin = Math.max(0, Math.min(...allY) - 2);
-  const yMax = Math.min(18, Math.max(...allY) + 2);
+  let xMin = 0, xMax = 18, yMin = 0, yMax = 18;
+  if (allX.length > 0) {
+    xMin = Math.max(0, Math.min(...allX) - 2);
+    xMax = Math.min(18, Math.max(...allX) + 2);
+    yMin = Math.max(0, Math.min(...allY) - 2);
+    yMax = Math.min(18, Math.max(...allY) + 2);
+  }
 
   return {
     id,

@@ -11,6 +11,7 @@ interface GoBoardProps {
   };
   onIntersectionClick: (x: number, y: number) => void;
   lastMove?: Stone;
+  showMoveNumbers?: boolean;
 }
 
 export const GoBoard: React.FC<GoBoardProps> = ({
@@ -18,6 +19,7 @@ export const GoBoard: React.FC<GoBoardProps> = ({
   viewRange,
   onIntersectionClick,
   lastMove,
+  showMoveNumbers = false,
 }) => {
   const { xStart, xEnd, yStart, yEnd } = viewRange;
   const width = xEnd - xStart;
@@ -35,8 +37,15 @@ export const GoBoard: React.FC<GoBoardProps> = ({
   };
 
   // For relative coordinates as requested (A-I, 1-9)
-  const getRelativeXLabel = (i: number) => "ABCDEFGHI"[i] || "";
-  const getRelativeYLabel = (j: number) => (j + 1).toString();
+  const getRelativeXLabel = (i: number) => {
+    const labels = "ABCDEFGHJKLMNOPQRST";
+    const absoluteX = xStart + i;
+    return labels[absoluteX] || absoluteX.toString();
+  };
+  const getRelativeYLabel = (j: number) => {
+    const absoluteY = yStart + j;
+    return (19 - absoluteY).toString();
+  };
 
   return (
     <div className="relative inline-block bg-[#e3c16f] p-1 sm:p-2 rounded-lg shadow-xl border-2 sm:border-4 border-[#8b5a2b] w-full max-w-[600px]">
@@ -188,7 +197,21 @@ export const GoBoard: React.FC<GoBoardProps> = ({
                 strokeWidth="0.5"
                 className="drop-shadow-md"
               />
-              {isLast && (
+              {showMoveNumbers && stone.moveNumber !== undefined && (
+                <text
+                  x={cx}
+                  y={cy}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fontSize="14"
+                  fontWeight="bold"
+                  fill={stone.color === 'black' ? '#fff' : '#000'}
+                  className="select-none pointer-events-none"
+                >
+                  {stone.moveNumber}
+                </text>
+              )}
+              {isLast && !showMoveNumbers && (
                 <circle
                   cx={cx}
                   cy={cy}

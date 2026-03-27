@@ -50,15 +50,9 @@ const App: React.FC = () => {
 
   const t = translations[language];
 
-  const QUADRANTS = [
-    { id: '全部', label: t.all },
-    { id: '左上', label: t.topLeft },
-    { id: '右上', label: t.topRight },
-    { id: '左下', label: t.bottomLeft },
-    { id: '右下', label: t.bottomRight }
-  ];
   const LEVELS = [
     { id: '全部', label: t.all },
+    { id: '幼幼班', label: t.toddler },
     { id: '初學', label: t.beginner },
     { id: '基礎', label: t.basic },
     { id: '中階', label: t.intermediate },
@@ -68,8 +62,7 @@ const App: React.FC = () => {
 
   const [allProblems] = useState<Problem[]>(DEFAULT_PROBLEMS);
   const [filteredProblems, setFilteredProblems] = useState<Problem[]>([]);
-  const [selectedQuadrant, setSelectedQuadrant] = useState('全部');
-  const [selectedLevel, setSelectedLevel] = useState('初學');
+  const [selectedLevel, setSelectedLevel] = useState('幼幼班');
   const [currentProblemIndex, setCurrentProblemIndex] = useState(0);
   const [stones, setStones] = useState<Stone[]>([]);
   const [userStones, setUserStones] = useState<Stone[]>([]);
@@ -103,16 +96,27 @@ const App: React.FC = () => {
   
   const [stats, setStats] = useState<Record<string, { attempted: number, correct: number }>>(() => {
     const saved = localStorage.getItem('gomemo_stats_v3');
-    return saved ? JSON.parse(saved) : {
+    const initialStats = {
+      '幼幼班': { attempted: 0, correct: 0 },
       '初學': { attempted: 0, correct: 0 },
       '基礎': { attempted: 0, correct: 0 },
       '中階': { attempted: 0, correct: 0 },
       '高階': { attempted: 0, correct: 0 },
       '極限': { attempted: 0, correct: 0 },
     };
+    if (saved) {
+      return { ...initialStats, ...JSON.parse(saved) };
+    }
+    return initialStats;
   });
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('gomemo_stats_v3', JSON.stringify(stats));
@@ -170,31 +174,19 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const filtered = allProblems.filter(p => {
-      const qMatch = selectedQuadrant === '全部' || p.quadrant === selectedQuadrant;
-      
-      if (selectedLevel === '全部') return qMatch;
-
-      if (selectedLevel === '初學') {
-        const totalStones = p.initialStones.length + p.solution.length;
-        return qMatch && p.level === '基礎' && totalStones < 12;
-      }
-      
-      if (selectedLevel === '基礎') {
-        const totalStones = p.initialStones.length + p.solution.length;
-        return qMatch && p.level === '基礎' && totalStones >= 12;
-      }
-
-      return qMatch && p.level === selectedLevel;
+      if (selectedLevel === '全部') return true;
+      return p.level === selectedLevel;
     });
     // Shuffle the filtered problems
     const shuffled = [...filtered].sort(() => Math.random() - 0.5);
     setFilteredProblems(shuffled);
     setCurrentProblemIndex(0);
-  }, [selectedQuadrant, selectedLevel, allProblems]);
+  }, [selectedLevel, allProblems]);
 
   const currentProblem = filteredProblems[currentProblemIndex];
 
   const resetProblem = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
     if (!currentProblem) return;
     setStones([]);
     setUserStones([]);
@@ -269,7 +261,7 @@ const App: React.FC = () => {
           if (timerRef.current) clearInterval(timerRef.current);
           // Phase 2: Placing
           setStatus('placing');
-          setStones([]);
+          setStones(currentProblem.initialStones);
           setUserStones([]);
           return 0;
         }
@@ -281,7 +273,7 @@ const App: React.FC = () => {
   const startRecallNow = () => {
     if (timerRef.current) clearInterval(timerRef.current);
     setStatus('placing');
-    setStones([]);
+    setStones(currentProblem!.initialStones);
     setUserStones([]);
     setMemoryTimer(0);
   };
@@ -302,7 +294,7 @@ const App: React.FC = () => {
         if (prev <= 1) {
           if (timerRef.current) clearInterval(timerRef.current);
           setStatus('placing');
-          setStones(currentUserStones);
+          setStones([...currentProblem!.initialStones, ...currentUserStones]);
           return 0;
         }
         return prev - 1;
@@ -313,32 +305,41 @@ const App: React.FC = () => {
   const handleIntersectionClick = (x: number, y: number) => {
     if (!currentProblem || status !== 'placing') return;
 
+    const isInitialStone = currentProblem.initialStones.some(s => s.x === x && s.y === y);
+    if (isInitialStone) return;
+
     const existingIndex = userStones.findIndex(s => s.x === x && s.y === y);
     
     if (selectedTool === 'eraser') {
       if (existingIndex >= 0) {
-        const stoneToErase = userStones[existingIndex];
-        if (lastMove?.x === stoneToErase.x && lastMove?.y === stoneToErase.y) {
+        // Remove the clicked stone and all stones placed AFTER it
+        const newStones = userStones.slice(0, existingIndex);
+        setUserStones(newStones);
+        setStones([...currentProblem.initialStones, ...newStones]);
+        
+        // Update lastMove to the new last stone
+        if (newStones.length > 0) {
+          setLastMove(newStones[newStones.length - 1]);
+        } else {
           setLastMove(undefined);
         }
-        const newStones = [...userStones];
-        newStones.splice(existingIndex, 1);
-        setUserStones(newStones);
-        setStones(newStones);
       }
       return;
     }
 
-    const newMove: Stone = { x, y, color: selectedTool };
+    // Automatic color: Move 1 (index 0) is black, Move 2 (index 1) is white...
+    const autoColor = userStones.length % 2 === 0 ? 'black' : 'white';
+    const newMove: Stone = { x, y, color: autoColor, moveNumber: userStones.length + 1 };
+    
     if (existingIndex >= 0) {
-      const newStones = [...userStones];
-      newStones[existingIndex] = newMove;
-      setUserStones(newStones);
-      setStones(newStones);
+      // If clicking an existing user stone (not in eraser mode), we could either do nothing or replace it.
+      // But since it's a sequence, replacing might break the sequence logic.
+      // Let's just do nothing if it's already there to avoid confusion.
+      return;
     } else {
       const newStones = [...userStones, newMove];
       setUserStones(newStones);
-      setStones(newStones);
+      setStones([...currentProblem.initialStones, ...newStones]);
       setLastMove(newMove);
     }
   };
@@ -346,12 +347,14 @@ const App: React.FC = () => {
   const checkAnswer = () => {
     if (!currentProblem) return;
 
-    const targetStones = [...currentProblem.initialStones, ...currentProblem.solution];
+    const targetStones = currentProblem.solution;
     
     // Check if every target stone is present in userStones and counts match
-    const isCorrect = userStones.length === targetStones.length && targetStones.every(target => 
-      userStones.some(user => user.x === target.x && user.y === target.y && user.color === target.color)
-    );
+    // For sequence training, we should also check the order if moveNumber is present
+    const isCorrect = userStones.length === targetStones.length && targetStones.every((target, idx) => {
+      const user = userStones[idx];
+      return user && user.x === target.x && user.y === target.y && user.color === target.color;
+    });
 
     if (isCorrect) {
       if (!hasWonCurrent && selectedLevel !== '全部') {
@@ -383,14 +386,17 @@ const App: React.FC = () => {
   };
 
   const handleExit = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
     setStatus('idle');
     setStones([]);
+    setUserStones([]);
     setLastMove(undefined);
     setPeekUsed(false);
     setHasAttemptedCurrent(false);
     setHasWonCurrent(false);
     setIsZoomed(false);
     setZoomOffset({ x: 0, y: 0 });
+    setMemoryTimer(0);
   };
 
   const nextProblem = () => {
@@ -577,25 +583,7 @@ const App: React.FC = () => {
         {/* Main Content: Filters & Board */}
         <div className="w-full flex flex-col items-center justify-start gap-8">
           {/* Filters */}
-          <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white/5 p-4 rounded-3xl border border-white/10 backdrop-blur-md">
-            <div className="space-y-2">
-              <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.quadrant}</label>
-              <div className="flex flex-wrap gap-2">
-                {QUADRANTS.map(q => (
-                  <button
-                    key={q.id}
-                    onClick={() => { setSelectedQuadrant(q.id); setCurrentProblemIndex(0); }}
-                    className={`px-3 py-1.5 rounded-xl text-sm font-bold uppercase tracking-widest transition-all ${
-                      selectedQuadrant === q.id 
-                        ? 'bg-orange-500 text-black shadow-lg shadow-orange-500/20' 
-                        : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white'
-                    }`}
-                  >
-                    {q.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+          <div className="w-full flex flex-col gap-4 bg-white/5 p-4 rounded-3xl border border-white/10 backdrop-blur-md">
             <div className="space-y-2">
               <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.difficulty}</label>
               <div className="flex flex-wrap gap-2">
@@ -699,31 +687,29 @@ const App: React.FC = () => {
               
               <motion.div
                 animate={{
-                  filter: status === 'idle' ? 'blur(40px)' : 'blur(0px)',
-                  opacity: status === 'idle' ? 0.1 : 1,
                   scale: isZoomed ? 1.5 : 1,
                   x: zoomOffset.x,
                   y: zoomOffset.y
                 }}
                 transition={{ 
                   scale: { duration: 0.3 },
-                  filter: { duration: 0.5 },
-                  opacity: { duration: 0.5 },
                   x: { type: 'spring', damping: 25, stiffness: 200 },
                   y: { type: 'spring', damping: 25, stiffness: 200 }
                 }}
                 className="relative z-10"
               >
-                {currentProblem ? (
+                {currentProblem && status !== 'idle' ? (
                   <GoBoard 
                     stones={stones}
                     viewRange={currentProblem.viewRange}
                     onIntersectionClick={handleIntersectionClick}
                     lastMove={lastMove}
+                    showMoveNumbers={true}
                   />
                 ) : (
-                  <div className="w-[400px] h-[400px] flex items-center justify-center text-white/20">
-                    {t.noProblems}
+                  <div className="w-full aspect-square flex flex-col items-center justify-center text-white/20 bg-black/20 rounded-2xl border border-dashed border-white/10">
+                    <Brain className="w-12 h-12 mb-4 opacity-20" />
+                    <p className="text-sm font-mono uppercase tracking-widest">{status === 'idle' ? t.selectProblemToStart : t.noProblems}</p>
                   </div>
                 )}
               </motion.div>
@@ -790,27 +776,19 @@ const App: React.FC = () => {
                 className="flex flex-col items-center gap-4"
               >
                 <div className="flex items-center gap-2 bg-white/5 p-2 rounded-2xl border border-white/10 backdrop-blur-md">
-                  <button
-                    onClick={() => setSelectedTool('black')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
-                      selectedTool === 'black' ? 'bg-white text-black font-bold' : 'text-white/40 hover:text-white'
-                    }`}
-                  >
-                    <Circle className="w-4 h-4 fill-current" />
-                    <span className="text-sm uppercase tracking-widest">{t.blackStone}</span>
-                  </button>
-                  <button
-                    onClick={() => setSelectedTool('white')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
-                      selectedTool === 'white' ? 'bg-white text-black font-bold' : 'text-white/40 hover:text-white'
-                    }`}
-                  >
-                    <Circle className="w-4 h-4" />
-                    <span className="text-sm uppercase tracking-widest">{t.whiteStone}</span>
-                  </button>
+                  {/* Next Move Indicator */}
+                  <div className="flex items-center gap-3 px-4 py-2 bg-white/10 rounded-xl border border-white/10">
+                    <div className="text-[10px] uppercase tracking-tighter text-white/40 font-mono">Next</div>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-4 h-4 rounded-full border border-white/20 ${userStones.length % 2 === 0 ? 'bg-black' : 'bg-white'}`} />
+                      <span className="text-sm font-mono font-bold text-orange-400">#{userStones.length + 1}</span>
+                    </div>
+                  </div>
+
                   <div className="w-px h-4 bg-white/10 mx-1" />
+
                   <button
-                    onClick={() => setSelectedTool('eraser')}
+                    onClick={() => setSelectedTool(selectedTool === 'eraser' ? 'black' : 'eraser')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
                       selectedTool === 'eraser' ? 'bg-red-500 text-white font-bold' : 'text-white/40 hover:text-red-400'
                     }`}
