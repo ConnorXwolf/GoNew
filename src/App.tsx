@@ -961,15 +961,29 @@ const App: React.FC = () => {
           <div className="flex flex-col items-center gap-6 w-full">
             {/* Quick Actions during Memorization */}
             {status === 'memorizing' && (
-              <motion.button
+              <motion.div 
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                onClick={startRecallNow}
-                className="px-8 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition-all active:scale-95 border border-white/10 flex items-center gap-2"
+                className="flex items-center gap-4"
               >
-                <Target className="w-4 h-4 text-orange-400" />
-                <span>{t.startRecallNow}</span>
-              </motion.button>
+                <button
+                  onClick={startRecallNow}
+                  className="px-8 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition-all active:scale-95 border border-white/10 flex items-center gap-2"
+                >
+                  <Target className="w-4 h-4 text-orange-400" />
+                  <span>{t.startRecallNow}</span>
+                </button>
+                
+                <button
+                  onClick={toggleZoom}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-2xl transition-all border border-white/10 ${
+                    isZoomed ? 'bg-orange-500 text-black font-bold' : 'bg-white/5 text-white/40 hover:text-orange-400'
+                  }`}
+                >
+                  <Eye className="w-4 h-4" />
+                  <span className="text-sm uppercase tracking-widest">{t.magnify}</span>
+                </button>
+              </motion.div>
             )}
 
             {/* Tool Selection */}

@@ -41,10 +41,11 @@ async function main() {
           if (boardSize === 9) {
             levels = [
               { name: '幼幼班', count: 5 },
-              { name: '初學', count: 10 },
-              { name: '基礎', count: 20 },
-              { name: '中階', count: 40 },
-              { name: '高階', count: 60 }
+              { name: '初學', count: 8 },
+              { name: '基礎', count: 10 },
+              { name: '中階', count: 15 },
+              { name: '高階', count: 20 },
+              { name: '極限', count: 25 }
             ];
           } else if (boardSize === 13) {
             levels = [
@@ -77,7 +78,7 @@ async function main() {
             }
           });
 
-          // Always add the full solution as "極限"
+          // Always add the full solution as "極限" for 13 and 19
           if (boardSize === 13) {
              if (fullSolution.length >= 100) {
                 allProblems.push({
@@ -96,7 +97,7 @@ async function main() {
                 solution: fullSolution.slice(0, 200)
               });
             }
-          } else {
+          } else if (boardSize !== 9) {
             allProblems.push({
               ...baseProblem,
               id: `${zipFileName}_${path.basename(entry.entryName, '.sgf')}_極限`,
