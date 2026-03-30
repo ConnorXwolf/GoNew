@@ -3,6 +3,7 @@ import { Stone, Color } from '../types';
 
 interface GoBoardProps {
   stones: Stone[];
+  errorStones?: Stone[];
   viewRange: {
     xStart: number;
     xEnd: number;
@@ -12,14 +13,17 @@ interface GoBoardProps {
   onIntersectionClick: (x: number, y: number) => void;
   lastMove?: Stone;
   showMoveNumbers?: boolean;
+  boardSize?: number;
 }
 
 export const GoBoard: React.FC<GoBoardProps> = ({
   stones,
+  errorStones = [],
   viewRange,
   onIntersectionClick,
   lastMove,
   showMoveNumbers = false,
+  boardSize = 19,
 }) => {
   const { xStart, xEnd, yStart, yEnd } = viewRange;
   const width = xEnd - xStart;
@@ -28,23 +32,30 @@ export const GoBoard: React.FC<GoBoardProps> = ({
   const padding = 50; // Increased padding to move coordinates further away
 
   const getXLabel = (val: number) => {
+    if (boardSize === 9) {
+      const labels = "ABCDEFGHI";
+      return labels[val] || val.toString();
+    }
+    if (boardSize === 13) {
+      const labels = "ABCDEFGHIJKLM";
+      return labels[val] || val.toString();
+    }
     const labels = "ABCDEFGHJKLMNOPQRST";
     return labels[val] || val.toString();
   };
 
   const getYLabel = (val: number) => {
-    return (19 - val).toString();
+    return (boardSize - val).toString();
   };
 
   // For relative coordinates as requested (A-I, 1-9)
   const getRelativeXLabel = (i: number) => {
-    const labels = "ABCDEFGHJKLMNOPQRST";
     const absoluteX = xStart + i;
-    return labels[absoluteX] || absoluteX.toString();
+    return getXLabel(absoluteX);
   };
   const getRelativeYLabel = (j: number) => {
     const absoluteY = yStart + j;
-    return (19 - absoluteY).toString();
+    return getYLabel(absoluteY);
   };
 
   return (
@@ -132,8 +143,16 @@ export const GoBoard: React.FC<GoBoardProps> = ({
         ))}
 
         {/* Star Points (Hoshi) - only if they fall within the range */}
-        {[3, 9, 15].map((x) =>
-          [3, 9, 15].map((y) => {
+        {(boardSize === 9 ? [2, 6, 4] : boardSize === 13 ? [3, 9, 6] : [3, 9, 15]).map((x) =>
+          (boardSize === 9 ? [2, 6, 4] : boardSize === 13 ? [3, 9, 6] : [3, 9, 15]).map((y) => {
+            // For 9x9, only show (4,4) as the center point, and (2,2), (2,6), (6,2), (6,6)
+            if (boardSize === 9 && x === 4 && y !== 4) return null;
+            if (boardSize === 9 && y === 4 && x !== 4) return null;
+            
+            // For 13x13, center point is (6,6), corners are (3,3), (3,9), (9,3), (9,9)
+            if (boardSize === 13 && x === 6 && y !== 6) return null;
+            if (boardSize === 13 && y === 6 && x !== 6) return null;
+            
             if (x >= xStart && x <= xEnd && y >= yStart && y <= yEnd) {
               return (
                 <circle
@@ -197,13 +216,62 @@ export const GoBoard: React.FC<GoBoardProps> = ({
                 strokeWidth="0.5"
                 className="drop-shadow-md"
               />
+              {/* Highlight stones if errorStones are present */}
+              {errorStones.length > 0 && stone.moveNumber !== undefined && (
+                (() => {
+                  const isCorrect = errorStones.some(s => s.x === stone.x && s.y === stone.y && s.color === stone.color);
+                  if (isCorrect) {
+                    return (
+                      <g>
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={cellSize / 2 + 2}
+                          fill="none"
+                          stroke="#22c55e"
+                          strokeWidth="3"
+                          strokeDasharray="4 2"
+                          className="opacity-80"
+                        />
+                        {!showMoveNumbers && (
+                          <text
+                            x={cx}
+                            y={cy}
+                            textAnchor="middle"
+                            dominantBaseline="middle"
+                            fontSize="18"
+                            fontWeight="bold"
+                            fill={stone.color === 'black' ? '#fff' : '#000'}
+                            className="select-none pointer-events-none"
+                          >
+                            {stone.moveNumber}
+                          </text>
+                        )}
+                      </g>
+                    );
+                  } else {
+                    return (
+                      <circle
+                        cx={cx}
+                        cy={cy}
+                        r={cellSize / 2 + 2}
+                        fill="none"
+                        stroke="#ef4444"
+                        strokeWidth="3"
+                        strokeDasharray="4 2"
+                        className="animate-pulse"
+                      />
+                    );
+                  }
+                })()
+              )}
               {showMoveNumbers && stone.moveNumber !== undefined && (
                 <text
                   x={cx}
                   y={cy}
                   textAnchor="middle"
                   dominantBaseline="middle"
-                  fontSize="14"
+                  fontSize="18"
                   fontWeight="bold"
                   fill={stone.color === 'black' ? '#fff' : '#000'}
                   className="select-none pointer-events-none"
@@ -220,6 +288,53 @@ export const GoBoard: React.FC<GoBoardProps> = ({
                   opacity="0.8"
                 />
               )}
+            </g>
+          );
+        })}
+
+        {/* Error/Correct Solution Stones (Ghost Stones) */}
+        {errorStones.map((stone, idx) => {
+          if (stone.x < xStart || stone.x > xEnd || stone.y < yStart || stone.y > yEnd) return null;
+          const cx = padding + (stone.x - xStart) * cellSize;
+          const cy = padding + (stone.y - yStart) * cellSize;
+          
+          // Check if user already placed a stone here correctly
+          const isAlreadyPlacedCorrectly = stones.some(s => s.x === stone.x && s.y === stone.y && s.color === stone.color);
+          if (isAlreadyPlacedCorrectly) return null;
+
+          return (
+            <g key={`error-stone-${idx}`} className="pointer-events-none">
+              {/* Green dashed border for correct solution */}
+              <circle
+                cx={cx}
+                cy={cy}
+                r={cellSize / 2 + 2}
+                fill="none"
+                stroke="#22c55e"
+                strokeWidth="3"
+                strokeDasharray="4 2"
+                className="opacity-80"
+              />
+              {/* Semi-transparent ghost stone */}
+              <circle
+                cx={cx}
+                cy={cy}
+                r={cellSize / 2 - 2}
+                fill={stone.color === 'black' ? '#000' : '#fff'}
+                className="opacity-30"
+              />
+              <text
+                x={cx}
+                y={cy}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fontSize="18"
+                fontWeight="black"
+                fill={stone.color === 'black' ? '#fff' : '#000'}
+                className="opacity-80"
+              >
+                {stone.moveNumber ?? idx + 1}
+              </text>
             </g>
           );
         })}

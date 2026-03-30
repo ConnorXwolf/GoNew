@@ -31,12 +31,30 @@
         "correct": { "type": "integer" }
       },
       "required": ["attempted", "correct"]
+    },
+    "SRSData": {
+      "title": "SRSData",
+      "description": "Spaced Repetition System data for a specific problem",
+      "type": "object",
+      "properties": {
+        "problemId": { "type": "string" },
+        "repetitions": { "type": "integer" },
+        "interval": { "type": "integer" },
+        "easeFactor": { "type": "number" },
+        "nextReviewDate": { "type": "integer", "description": "Timestamp in milliseconds" },
+        "lastReviewDate": { "type": "integer", "description": "Timestamp in milliseconds" }
+      },
+      "required": ["problemId", "repetitions", "interval", "easeFactor", "nextReviewDate", "lastReviewDate"]
     }
   },
   "firestore": {
     "/userStats/{userId}": {
       "schema": "UserStats",
       "description": "User learning progress"
+    },
+    "/userSRS/{userId}/problems/{problemId}": {
+      "schema": "SRSData",
+      "description": "User SRS data for a problem"
     }
   }
 }

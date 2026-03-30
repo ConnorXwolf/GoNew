@@ -24,4 +24,14 @@ export interface Problem {
   turn: Color;
   quadrant?: string;
   level?: string;
+  boardSize?: number;
+}
+
+export interface SRSData {
+  problemId: string;
+  repetitions: number;
+  interval: number;
+  easeFactor: number;
+  nextReviewDate: number; // timestamp
+  lastReviewDate: number; // timestamp
 }

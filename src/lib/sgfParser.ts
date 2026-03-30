@@ -60,6 +60,9 @@ export function parseSGF(sgf: string, id: string): Problem | null {
   const gn = sgf.match(/GN\[(.*?)\]/);
   if (gn) title = gn[1];
   
+  const szMatch = sgf.match(/SZ\[(\d+)\]/);
+  const boardSize = szMatch ? parseInt(szMatch[1]) : 19;
+
   // Handle multi-line comments and nested brackets
   const cMatch = sgf.match(/C\[([\s\S]*?)\](?=[A-Z]\[|\]|\)|$)/);
   if (cMatch) {
@@ -75,12 +78,20 @@ export function parseSGF(sgf: string, id: string): Problem | null {
   const allX = [...stones.map(s => s.x), ...solution.map(s => s.x)];
   const allY = [...stones.map(s => s.y), ...solution.map(s => s.y)];
   
-  let xMin = 0, xMax = 18, yMin = 0, yMax = 18;
+  let xMin = 0, xMax = boardSize - 1, yMin = 0, yMax = boardSize - 1;
   if (allX.length > 0) {
-    xMin = Math.max(0, Math.min(...allX) - 2);
-    xMax = Math.min(18, Math.max(...allX) + 2);
-    yMin = Math.max(0, Math.min(...allY) - 2);
-    yMax = Math.min(18, Math.max(...allY) + 2);
+    if (boardSize === 9) {
+      // For 9x9, usually we show the whole board
+      xMin = 0;
+      xMax = 8;
+      yMin = 0;
+      yMax = 8;
+    } else {
+      xMin = Math.max(0, Math.min(...allX) - 2);
+      xMax = Math.min(boardSize - 1, Math.max(...allX) + 2);
+      yMin = Math.max(0, Math.min(...allY) - 2);
+      yMax = Math.min(boardSize - 1, Math.max(...allY) + 2);
+    }
   }
 
   return {
@@ -92,6 +103,7 @@ export function parseSGF(sgf: string, id: string): Problem | null {
     explanation,
     difficulty: 'medium',
     viewRange: { xStart: xMin, xEnd: xMax, yStart: yMin, yEnd: yMax },
-    turn
+    turn,
+    boardSize
   };
 }

@@ -23,10 +23,13 @@ import {
   Mail,
   Lock,
   Loader2,
-  Languages
+  Languages,
+  Shuffle,
+  Calendar,
+  BookOpen
 } from 'lucide-react';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, getDocs, query, where } from 'firebase/firestore';
 import { 
   auth, 
   db, 
@@ -39,8 +42,18 @@ import {
 } from './firebase';
 import { GoBoard } from './components/GoBoard';
 import { PROBLEMS as DEFAULT_PROBLEMS } from './constants';
-import { Problem, Stone } from './types';
+import { Problem, Stone, SRSData } from './types';
 import { translations, Language } from './translations';
+import { calculateSM2, INITIAL_SRS_DATA } from './lib/srsService';
+
+const shuffleArray = <T,>(array: T[]): T[] => {
+  const newArray = [...array];
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+  }
+  return newArray;
+};
 
 const App: React.FC = () => {
   const [language, setLanguage] = useState<Language>(() => {
@@ -63,12 +76,13 @@ const App: React.FC = () => {
   const [allProblems] = useState<Problem[]>(DEFAULT_PROBLEMS);
   const [filteredProblems, setFilteredProblems] = useState<Problem[]>([]);
   const [selectedLevel, setSelectedLevel] = useState('幼幼班');
+  const [selectedBoardSize, setSelectedBoardSize] = useState<number>(9);
   const [currentProblemIndex, setCurrentProblemIndex] = useState(0);
   const [stones, setStones] = useState<Stone[]>([]);
   const [userStones, setUserStones] = useState<Stone[]>([]);
   const [selectedTool, setSelectedTool] = useState<'black' | 'white' | 'eraser'>('black');
   const [lastMove, setLastMove] = useState<Stone | undefined>();
-  const [status, setStatus] = useState<'idle' | 'memorizing' | 'placing' | 'correct' | 'wrong'>('idle');
+  const [status, setStatus] = useState<'idle' | 'memorizing' | 'placing' | 'correct' | 'wrong' | 'result'>('idle');
   const [showExplanation, setShowExplanation] = useState(false);
   const [score, setScore] = useState(0);
   const [memoryTimer, setMemoryTimer] = useState(0);
@@ -90,9 +104,74 @@ const App: React.FC = () => {
   const [isZoomed, setIsZoomed] = useState(false);
   const [zoomOffset, setZoomOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [srsData, setSrsData] = useState<Record<string, SRSData>>(() => {
+    const saved = localStorage.getItem('gomemo_srs_v1');
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [isReviewMode, setIsReviewMode] = useState(false);
+
   const dragStartRef = useRef({ x: 0, y: 0 });
   
   const [user, authLoading] = useAuthState(auth);
+
+  useEffect(() => {
+    if (user) {
+      const fetchSRS = async () => {
+        try {
+          const srsRef = collection(db, 'userSRS', user.uid, 'problems');
+          const snapshot = await getDocs(srsRef);
+          const data: Record<string, SRSData> = {};
+          snapshot.forEach(doc => {
+            data[doc.id] = doc.data() as SRSData;
+          });
+          setSrsData(prev => {
+            const merged = { ...prev, ...data };
+            localStorage.setItem('gomemo_srs_v1', JSON.stringify(merged));
+            return merged;
+          });
+        } catch (error) {
+          console.error("Failed to fetch SRS data:", error);
+        }
+      };
+      fetchSRS();
+    }
+  }, [user]);
+
+  const updateSRS = async (problemId: string, quality: number) => {
+    const currentSRS = srsData[problemId] || INITIAL_SRS_DATA(problemId);
+    const { interval, repetitions, easeFactor } = calculateSM2(
+      quality,
+      currentSRS.repetitions,
+      currentSRS.interval,
+      currentSRS.easeFactor
+    );
+    
+    const nextReviewDate = Date.now() + interval * 24 * 60 * 60 * 1000;
+    
+    const newData: SRSData = {
+      problemId,
+      repetitions,
+      interval,
+      easeFactor,
+      nextReviewDate,
+      lastReviewDate: Date.now(),
+    };
+    
+    setSrsData(prev => {
+      const next = { ...prev, [problemId]: newData };
+      localStorage.setItem('gomemo_srs_v1', JSON.stringify(next));
+      return next;
+    });
+    
+    if (user) {
+      try {
+        const docRef = doc(db, 'userSRS', user.uid, 'problems', problemId);
+        await setDoc(docRef, newData);
+      } catch (error) {
+        console.error("Failed to update SRS data:", error);
+      }
+    }
+  };
   
   const [stats, setStats] = useState<Record<string, { attempted: number, correct: number }>>(() => {
     const saved = localStorage.getItem('gomemo_stats_v3');
@@ -117,6 +196,8 @@ const App: React.FC = () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
+
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     localStorage.setItem('gomemo_stats_v3', JSON.stringify(stats));
@@ -172,16 +253,39 @@ const App: React.FC = () => {
     localStorage.setItem('gomemo_lang', language);
   }, [language]);
 
+  // Handle initial SRS data load for Review mode
+  const [srsInitialized, setSrsInitialized] = useState(false);
   useEffect(() => {
+    if (isReviewMode && !srsInitialized && Object.keys(srsData).length > 0) {
+      const filtered = allProblems.filter(p => {
+        const sizeMatch = p.boardSize === selectedBoardSize;
+        const srs = srsData[p.id];
+        return sizeMatch && srs && srs.nextReviewDate <= Date.now();
+      });
+      const shuffled = shuffleArray([...filtered]);
+      setFilteredProblems(shuffled);
+      setCurrentProblemIndex(0);
+      setSrsInitialized(true);
+    }
+  }, [isReviewMode, srsData, selectedBoardSize, srsInitialized]);
+
+  useEffect(() => {
+    setSrsInitialized(false);
     const filtered = allProblems.filter(p => {
-      if (selectedLevel === '全部') return true;
-      return p.level === selectedLevel;
+      const sizeMatch = p.boardSize === selectedBoardSize;
+      if (isReviewMode) {
+        const srs = srsData[p.id];
+        return sizeMatch && srs && srs.nextReviewDate <= Date.now();
+      } else {
+        const levelMatch = selectedLevel === '全部' || p.level === selectedLevel;
+        return levelMatch && sizeMatch;
+      }
     });
-    // Shuffle the filtered problems
-    const shuffled = [...filtered].sort(() => Math.random() - 0.5);
+    // Shuffle the filtered problems only when the filter criteria change
+    const shuffled = shuffleArray([...filtered]);
     setFilteredProblems(shuffled);
     setCurrentProblemIndex(0);
-  }, [selectedLevel, allProblems]);
+  }, [selectedLevel, selectedBoardSize, isReviewMode, allProblems, refreshKey]);
 
   const currentProblem = filteredProblems[currentProblemIndex];
 
@@ -303,7 +407,7 @@ const App: React.FC = () => {
   };
 
   const handleIntersectionClick = (x: number, y: number) => {
-    if (!currentProblem || status !== 'placing') return;
+    if (!currentProblem || status !== 'placing' || attempts === 0) return;
 
     const isInitialStone = currentProblem.initialStones.some(s => s.x === x && s.y === y);
     if (isInitialStone) return;
@@ -367,20 +471,32 @@ const App: React.FC = () => {
         }));
         setHasWonCurrent(true);
       }
+      
+      // SRS Update: 5 if no peek, 3 if peek used
+      updateSRS(currentProblem.id, peekUsed ? 3 : 5);
+      
       setStatus('correct');
       setScore(s => s + 100);
+      // Show explanation after a short delay
       setTimeout(() => setShowExplanation(true), 500);
+      // Hide the "Correct" overlay after 1 second and transition to result state
+      setTimeout(() => setStatus('result'), 1000);
     } else {
       const newAttempts = attempts - 1;
       setAttempts(newAttempts);
       
       if (newAttempts > 0) {
         setStatus('wrong');
-        setTimeout(() => setStatus('placing'), 1500);
+        setTimeout(() => setStatus('placing'), 1000);
       } else {
         setStatus('wrong');
-        // After 3 attempts, maybe show the answer or just stay wrong
-        setTimeout(() => setShowExplanation(true), 1500);
+        // SRS Update: 0 if failed all attempts
+        updateSRS(currentProblem.id, 0);
+        // After 3 attempts, show the answer and hide the overlay after 1 second
+        setTimeout(() => {
+          setStatus('result');
+          setShowExplanation(true);
+        }, 1000);
       }
     }
   };
@@ -392,8 +508,10 @@ const App: React.FC = () => {
     setUserStones([]);
     setLastMove(undefined);
     setPeekUsed(false);
+    setShowExplanation(false);
     setHasAttemptedCurrent(false);
     setHasWonCurrent(false);
+    setAttempts(selectedLevel === '極限' ? 1 : 3);
     setIsZoomed(false);
     setZoomOffset({ x: 0, y: 0 });
     setMemoryTimer(0);
@@ -401,11 +519,23 @@ const App: React.FC = () => {
 
   const nextProblem = () => {
     if (filteredProblems.length === 0) return;
-    setCurrentProblemIndex((prev) => (prev + 1) % filteredProblems.length);
+    
+    // Pick a random index instead of sequential
+    if (filteredProblems.length > 1) {
+      let nextIndex;
+      do {
+        nextIndex = Math.floor(Math.random() * filteredProblems.length);
+      } while (nextIndex === currentProblemIndex);
+      setCurrentProblemIndex(nextIndex);
+    } else {
+      setCurrentProblemIndex(0);
+    }
   };
 
   const prevProblem = () => {
     if (filteredProblems.length === 0) return;
+    // For random mode, prev can just be another random one or we can keep it sequential
+    // Let's keep it sequential for those who want to go back to what they just saw
     setCurrentProblemIndex((prev) => (prev - 1 + filteredProblems.length) % filteredProblems.length);
   };
 
@@ -584,24 +714,88 @@ const App: React.FC = () => {
         <div className="w-full flex flex-col items-center justify-start gap-8">
           {/* Filters */}
           <div className="w-full flex flex-col gap-4 bg-white/5 p-4 rounded-3xl border border-white/10 backdrop-blur-md">
-            <div className="space-y-2">
-              <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.difficulty}</label>
-              <div className="flex flex-wrap gap-2">
-                {LEVELS.map(l => (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.mode}</label>
+                <div className="flex gap-2">
                   <button
-                    key={l.id}
-                    onClick={() => { setSelectedLevel(l.id); setCurrentProblemIndex(0); }}
-                    className={`px-3 py-1.5 rounded-xl text-sm font-bold uppercase tracking-widest transition-all ${
-                      selectedLevel === l.id 
+                    onClick={() => setIsReviewMode(false)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold uppercase tracking-widest transition-all ${
+                      !isReviewMode 
                         ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' 
-                        : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white'
+                        : 'bg-white/5 text-white/40 hover:bg-white/10'
                     }`}
                   >
-                    {l.label}
+                    <BookOpen className="w-4 h-4" />
+                    {t.training}
                   </button>
-                ))}
+                  <button
+                    onClick={() => setIsReviewMode(true)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold uppercase tracking-widest transition-all ${
+                      isReviewMode 
+                        ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20' 
+                        : 'bg-white/5 text-white/40 hover:bg-white/10'
+                    }`}
+                  >
+                    <Calendar className="w-4 h-4" />
+                    {t.review}
+                    {Object.values(srsData).filter(s => s.nextReviewDate <= Date.now()).length > 0 && (
+                      <span className="ml-1 px-1.5 py-0.5 rounded-full bg-white/20 text-[10px]">
+                        {Object.values(srsData).filter(s => s.nextReviewDate <= Date.now()).length}
+                      </span>
+                    )}
+                  </button>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.boardSize}</label>
+                <div className="flex gap-2">
+                  {[9, 13, 19].map(size => (
+                    <button
+                      key={size}
+                      onClick={() => { 
+                        setSelectedBoardSize(size); 
+                        setCurrentProblemIndex(0);
+                        setRefreshKey(prev => prev + 1);
+                      }}
+                      className={`px-4 py-2 rounded-xl text-sm font-bold uppercase tracking-widest transition-all ${
+                        selectedBoardSize === size 
+                          ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' 
+                          : 'bg-white/5 text-white/40 hover:bg-white/10'
+                      }`}
+                    >
+                      {size === 9 ? t.size9 : size === 13 ? t.size13 : t.size19}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
+
+            {!isReviewMode && (
+              <div className="space-y-2">
+                <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.difficulty}</label>
+                <div className="flex flex-wrap gap-2">
+                  {LEVELS.map(l => (
+                    <button
+                      key={l.id}
+                      onClick={() => { 
+                        setSelectedLevel(l.id); 
+                        setCurrentProblemIndex(0);
+                        setRefreshKey(prev => prev + 1);
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-sm font-bold uppercase tracking-widest transition-all ${
+                        selectedLevel === l.id 
+                          ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' 
+                          : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white'
+                      }`}
+                    >
+                      {l.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Status Bar (Timer & Mode) */}
@@ -701,15 +895,21 @@ const App: React.FC = () => {
                 {currentProblem && status !== 'idle' ? (
                   <GoBoard 
                     stones={stones}
+                    errorStones={(showExplanation || status === 'correct' || attempts === 0) ? currentProblem.solution : []}
                     viewRange={currentProblem.viewRange}
                     onIntersectionClick={handleIntersectionClick}
                     lastMove={lastMove}
                     showMoveNumbers={true}
+                    boardSize={currentProblem.boardSize || 19}
                   />
                 ) : (
-                  <div className="w-full aspect-square flex flex-col items-center justify-center text-white/20 bg-black/20 rounded-2xl border border-dashed border-white/10">
+                  <div className="w-full aspect-square flex flex-col items-center justify-center text-white/20 bg-black/20 rounded-2xl border border-dashed border-white/10 p-8 text-center">
                     <Brain className="w-12 h-12 mb-4 opacity-20" />
-                    <p className="text-sm font-mono uppercase tracking-widest">{status === 'idle' ? t.selectProblemToStart : t.noProblems}</p>
+                    <p className="text-sm font-mono uppercase tracking-widest">
+                      {status === 'idle' 
+                        ? (isReviewMode && filteredProblems.length === 0 ? t.noDueReviews : t.selectProblemToStart) 
+                        : t.noProblems}
+                    </p>
                   </div>
                 )}
               </motion.div>
@@ -743,8 +943,12 @@ const App: React.FC = () => {
                   <div className="bg-red-500 text-white px-6 sm:px-10 py-3 sm:py-5 rounded-2xl flex items-center gap-3 sm:gap-4 shadow-[0_0_50px_rgba(239,68,68,0.4)]">
                     <XCircle className="w-8 h-8 sm:w-10 sm:h-10" />
                     <div className="flex flex-col">
-                      <span className="text-xl sm:text-2xl font-black uppercase italic leading-none">{t.wrong}</span>
-                      <span className="text-xs sm:text-sm font-bold uppercase tracking-widest opacity-80">{t.tryAgain}</span>
+                      <span className="text-xl sm:text-2xl font-black uppercase italic leading-none">
+                        {attempts === 0 ? t.gameOver : t.wrong}
+                      </span>
+                      <span className="text-xs sm:text-sm font-bold uppercase tracking-widest opacity-80">
+                        {attempts === 0 ? t.masteredPattern : t.tryAgain}
+                      </span>
                     </div>
                   </div>
                 </motion.div>
@@ -850,7 +1054,7 @@ const App: React.FC = () => {
                     <Brain className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform" />
                     <span className="font-bold uppercase tracking-widest text-xs sm:text-sm">{t.startTraining}</span>
                   </button>
-                ) : status === 'placing' ? (
+                ) : (status === 'placing' && attempts > 0) ? (
                   <button 
                     onClick={checkAnswer}
                     className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-blue-500 hover:bg-blue-400 text-white flex items-center gap-2 sm:gap-3 transition-all active:scale-95 group shadow-lg shadow-blue-500/20"
@@ -858,6 +1062,11 @@ const App: React.FC = () => {
                     <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform" />
                     <span className="font-bold uppercase tracking-widest text-xs sm:text-sm">{t.checkAnswer}</span>
                   </button>
+                ) : status === 'result' ? (
+                  <div className="px-6 sm:px-8 py-3 sm:py-4 flex items-center gap-2 sm:gap-3 text-white/40">
+                    <Target className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="font-bold uppercase tracking-widest text-xs sm:text-sm">{t.learningProgress}</span>
+                  </div>
                 ) : (
                   <div className="px-6 sm:px-8 py-3 sm:py-4 flex items-center gap-2 sm:gap-3 text-white/20">
                     <Brain className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -876,16 +1085,52 @@ const App: React.FC = () => {
             </div>
 
             {/* Next Problem Button after Completion */}
-            {(status === 'correct' || status === 'wrong' || showExplanation) && (
-              <motion.button
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                onClick={nextProblem}
-                className="w-full max-w-xs py-6 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-black font-black text-xl transition-all shadow-xl shadow-orange-500/20 active:scale-[0.98] flex items-center justify-center gap-3"
-              >
-                <span>{t.nextProblem}</span>
-                <ChevronRight className="w-6 h-6" />
-              </motion.button>
+            {(status === 'correct' || status === 'result' || attempts === 0 || showExplanation) && (
+              <div className="flex flex-col items-center gap-4 w-full max-w-xs">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`w-full py-3 rounded-xl border flex items-center justify-center gap-3 font-black uppercase tracking-widest ${
+                    (status === 'correct' || (status === 'result' && hasWonCurrent))
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' 
+                      : 'bg-red-500/10 border-red-500/30 text-red-500'
+                  }`}
+                >
+                  {(status === 'correct' || (status === 'result' && hasWonCurrent)) ? (
+                    <>
+                      <CheckCircle2 className="w-5 h-5" />
+                      <span>{t.correct}</span>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="w-5 h-5" />
+                      <span>{attempts === 0 ? t.gameOver : t.wrong}</span>
+                    </>
+                  )}
+                </motion.div>
+                
+                {attempts === 0 && !hasWonCurrent ? (
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    onClick={handleExit}
+                    className="w-full py-6 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-black text-xl transition-all active:scale-[0.98] flex items-center justify-center gap-3"
+                  >
+                    <Home className="w-6 h-6" />
+                    <span>{t.backToHome}</span>
+                  </motion.button>
+                ) : (
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    onClick={nextProblem}
+                    className="w-full py-6 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-black font-black text-xl transition-all shadow-xl shadow-orange-500/20 active:scale-[0.98] flex items-center justify-center gap-3"
+                  >
+                    <span>{t.nextProblem}</span>
+                    <ChevronRight className="w-6 h-6" />
+                  </motion.button>
+                )}
+              </div>
             )}
           </div>
         </div>
