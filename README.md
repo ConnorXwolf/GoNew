@@ -2,22 +2,39 @@
 
 這是一個專為圍棋愛好者設計的網頁應用程式，旨在幫助玩家提升對棋盤形狀的記憶力與直覺。透過短時間的記憶訓練，玩家可以更快速地掌握棋形，進而在實戰中提升計算與判斷能力。
 
-## ✨ 核心功能 (Features)
+## ✨ 核心功能 (Key Features)
 
-*   **🧠 漸進式難度分級**：提供從「初學」到「極限」共 6 個難度等級，滿足不同棋力的玩家需求。
-*   **📈 動態難度調整 (DDA)**：系統會根據您的答題狀況自動調整題目難度。連續答對將增加下一題的棋子數量，答錯則會減少，確保訓練始終處於最具挑戰性且不氣餒的區間。
-*   **🎯 循序漸進的題庫**：每個難度的題目皆依照棋子數量由少到多精心排序（例如：初學難度從 4 顆子開始），讓您能穩紮穩打地進步。
-*   **⏱️ 限時記憶挑戰**：在有限的時間內（預設 30 秒）記住盤面上的黑白子分佈，時間結束或點擊「開始作答」後，憑記憶還原棋盤。
-*   **🏆 成就解鎖系統**：內建多項成就（如：新手入門、手筋達人、記憶大師等），增添訓練的趣味性與成就感。
-*   **📱 響應式設計**：支援電腦與行動裝置，隨時隨地都能進行腦力訓練。
+### 繁體中文 (Traditional Chinese)
+*   **🧠 圍棋記憶訓練**：專為提升圍棋棋感與記憶力設計的互動平台。
+*   **📐 多種棋盤規格**：支援 9路、13路及 19路棋盤，滿足不同階段的練習需求。
+*   **📊 精細難度分級**：從「幼幼班」（10-15手）到「極限」（200手或全譜），適合各階段棋友。
+*   **🔄 間隔重複系統 (SRS)**：採用 SM-2 演算法，自動安排複習時間，強化長期記憶。
+*   **🎲 隨機出題機制**：同難度與規格下隨機顯示題目，避免死記硬背，提升訓練效果。
+*   **🎨 直觀互動介面**：支援落子、偷看解答、手順數字顯示及詳細解說。
+*   **👁️ 視覺化反饋**：正確與錯誤落子皆有明確的虛線標示，並在棋子上顯示正確的手順。
+*   **☁️ 數據同步與統計**：支援 Firebase (Firestore) 雲端同步與本地儲存，追蹤您的學習進度。
+*   **🌐 多國語言支援**：提供繁體中文與英文介面切換。
+*   **📚 豐富題庫**：內建超過 500 個精選 SGF 棋譜題目，持續更新中。
+
+### English
+*   **🧠 Go Memory Training**: An interactive platform designed to improve Go (Weiqi) intuition and memory.
+*   **📐 Multiple Board Sizes**: Supports 9x9, 13x13, and 19x19 boards for versatile practice.
+*   **📊 Granular Difficulty Levels**: Ranges from "Toddler" (10-15 moves) to "Extreme" (200 moves or full game).
+*   **🔄 Spaced Repetition System (SRS)**: Utilizes the SM-2 algorithm to schedule reviews at optimal intervals for long-term retention.
+*   **🎲 Randomized Problem Selection**: Problems are shuffled within categories to prevent rote memorization and enhance training.
+*   **🎨 Intuitive Interface**: Features stone placement, peeking at solutions, move number displays, and detailed explanations.
+*   **👁️ Visual Feedback**: Clear dashed outlines (green for correct, red for incorrect) with move numbers displayed on stones.
+*   **☁️ Data Sync & Stats**: Supports Firebase (Firestore) cloud sync and local storage to track your learning progress.
+*   **🌐 Multilingual Support**: Available in both Traditional Chinese and English.
+*   **📚 Extensive Problem Library**: Includes over 500 curated problems imported from SGF files.
 
 ## 🎮 遊玩方式 (How to Play)
 
-1.  **選擇難度**：在首頁選擇適合您的難度區間。
-2.  **記憶盤面**：畫面會顯示一個帶有棋子的棋盤，請在倒數計時結束前盡可能記住所有黑子與白子的位置。
-3.  **還原棋盤**：進入作答模式後，點擊空白棋盤放置黑子，再次點擊切換為白子，第三次點擊則清除該位置的棋子。
-4.  **提交答案**：完成佈局後點擊「提交答案」。系統會立即核對並顯示結果。
-5.  **查看解析**：若答錯，系統會用紅色標示放錯的棋子，並用綠色標示漏放的正確位置，幫助您檢討與學習。
+1.  **選擇難度與棋盤**：在首頁選擇適合您的難度區間與棋盤大小（9路/13路/19路）。
+2.  **記憶盤面**：系統會顯示一段棋譜，請在限時內記住所有棋子的位置與順序。
+3.  **還原棋盤**：進入作答模式後，憑記憶在棋盤上放置正確顏色的棋子。
+4.  **提交答案**：完成後點擊「檢查答案」。系統會核對您的佈局。
+5.  **檢討學習**：查看正確的手順與虛線反饋，並利用 SRS 系統在最佳時間點再次複習。
 
 ## 🛠️ 技術棧 (Tech Stack)
 
@@ -25,6 +42,8 @@
 *   **程式語言**: TypeScript
 *   **樣式框架**: Tailwind CSS
 *   **建置工具**: Vite
+*   **後端服務**: Firebase (Auth & Firestore)
+*   **動畫庫**: Framer Motion
 *   **圖示庫**: Lucide React
 
 ## 🚀 本地開發 (Local Development)
@@ -39,15 +58,16 @@
    npm run dev
    ```
 
-3. 建置正式環境版本：
+3. 匯入 SGF 題目：
    ```bash
-   npm run build
+   npx tsx src/lib/importProblems.ts
    ```
 
 ## 📁 專案結構 (Project Structure)
 
-*   `/src/components/`: 包含可重複使用的 UI 元件（如 `GoBoard` 棋盤元件）。
-*   `/src/lib/`: 包含遊戲核心邏輯 (`gameLogic.ts`) 與題庫資料 (`groupedProblems.json`)。
+*   `/src/components/`: 包含 UI 元件（如 `GoBoard` 棋盤元件）。
+*   `/src/lib/`: 包含遊戲核心邏輯、SRS 演算法與 SGF 解析器。
+*   `/src/lib/problems.json`: 匯入後的完整題庫資料。
 *   `/src/App.tsx`: 應用程式的主要視圖與狀態管理。
 *   `/src/index.css`: 全域樣式與 Tailwind CSS 引入。
 

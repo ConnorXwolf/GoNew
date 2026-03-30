@@ -112,7 +112,7 @@ async function main() {
     }
   }
 
-  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(allProblems, null, 2));
+  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(allProblems));
   console.log(`Successfully imported ${allProblems.length} problems to ${OUTPUT_FILE}`);
 }
 
