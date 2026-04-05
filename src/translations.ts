@@ -88,7 +88,9 @@ export const translations = {
     rename: "重新命名",
     delete: "刪除",
     saveTo: "儲存至",
-    selectFolder: "選擇資料夾"
+    selectFolder: "選擇資料夾",
+    startMove: "起始手數",
+    endMove: "結束手數"
   },
   en: {
     title: "GoMemo • Pattern Memory",
@@ -177,7 +179,9 @@ export const translations = {
     rename: "Rename",
     delete: "Delete",
     saveTo: "Save to",
-    selectFolder: "Select Folder"
+    selectFolder: "Select Folder",
+    startMove: "Start Move",
+    endMove: "End Move"
   },
   ja: {
     title: "GoMemo • 棋型記憶トレーニング",
@@ -266,6 +270,8 @@ export const translations = {
     rename: "名前を変更",
     delete: "削除",
     saveTo: "保存先",
-    selectFolder: "フォルダを選択"
+    selectFolder: "フォルダを選択",
+    startMove: "開始手",
+    endMove: "終了手"
   }
 };

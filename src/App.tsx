@@ -147,6 +147,8 @@ const App: React.FC = () => {
     sgf: string;
     createdAt: number;
     moveCount?: number;
+    moveStart?: number;
+    moveEnd?: number;
     folderId?: string | null;
   }
   interface UserFolder {
@@ -163,7 +165,8 @@ const App: React.FC = () => {
   const [rawSgfContent, setRawSgfContent] = useState('');
   const [customSgfMoves, setCustomSgfMoves] = useState<Stone[]>([]);
   const [customBoardSize, setCustomBoardSize] = useState(19);
-  const [customMoveCount, setCustomMoveCount] = useState(10);
+  const [customMoveStart, setCustomMoveStart] = useState(1);
+  const [customMoveEnd, setCustomMoveEnd] = useState(10);
   const [customProblem, setCustomProblem] = useState<Problem | null>(null);
   const [sgfFileName, setSgfFileName] = useState('');
   const [sgfErrorMsg, setSgfErrorMsg] = useState('');
@@ -406,7 +409,8 @@ const App: React.FC = () => {
         }
         setCustomSgfMoves(moves);
         setCustomBoardSize(boardSize);
-        setCustomMoveCount(Math.min(moves.length, 10));
+        setCustomMoveStart(1);
+        setCustomMoveEnd(Math.min(moves.length, 10));
       } catch (err) {
         setSgfErrorMsg(t.sgfError);
       }
@@ -423,7 +427,8 @@ const App: React.FC = () => {
       title: sgfFileName,
       sgf: rawSgfContent,
       createdAt: Date.now(),
-      moveCount: customMoveCount,
+      moveStart: customMoveStart,
+      moveEnd: customMoveEnd,
       folderId: saveToFolderId || null
     };
 
@@ -500,7 +505,8 @@ const App: React.FC = () => {
       const { moves, boardSize } = parseSgf(saved.sgf);
       setCustomSgfMoves(moves);
       setCustomBoardSize(boardSize);
-      setCustomMoveCount(saved.moveCount || Math.min(moves.length, 10));
+      setCustomMoveStart(saved.moveStart || 1);
+      setCustomMoveEnd(saved.moveEnd || saved.moveCount || Math.min(moves.length, 10));
     } catch (err) {
       setSgfErrorMsg(t.sgfError);
     }
@@ -525,11 +531,12 @@ const App: React.FC = () => {
   const startCustomTraining = () => {
     if (customSgfMoves.length === 0) return;
 
-    const solution = customSgfMoves.slice(0, customMoveCount);
+    const solution = customSgfMoves.slice(customMoveStart - 1, customMoveEnd);
+    const moveCount = customMoveEnd - customMoveStart + 1;
     const newProblem: Problem = {
       id: 'custom-' + Date.now(),
       title: sgfFileName,
-      description: `Custom SGF: ${customMoveCount} moves`,
+      description: `Custom SGF: ${moveCount} moves (${customMoveStart}-${customMoveEnd})`,
       initialStones: [],
       solution: solution,
       explanation: 'Custom SGF problem',
@@ -1196,18 +1203,45 @@ const App: React.FC = () => {
                   </div>
 
                   {customSgfMoves.length > 0 && (
-                    <div className="flex-1 space-y-2">
-                      <label className="block text-sm font-mono text-white/30 uppercase tracking-widest">
-                        {t.selectMoves}: <span className="text-orange-400">{customMoveCount}</span>
-                      </label>
-                      <input
-                        type="range"
-                        min="1"
-                        max={customSgfMoves.length}
-                        value={customMoveCount}
-                        onChange={(e) => setCustomMoveCount(parseInt(e.target.value))}
-                        className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-orange-500"
-                      />
+                    <div className="flex-1 space-y-4">
+                      <div className="space-y-2">
+                        <label className="block text-xs font-mono text-white/30 uppercase tracking-widest">
+                          {t.startMove}: <span className="text-orange-400">{customMoveStart}</span>
+                        </label>
+                        <input
+                          type="range"
+                          min="1"
+                          max={customSgfMoves.length}
+                          value={customMoveStart}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value);
+                            setCustomMoveStart(val);
+                            if (val > customMoveEnd) {
+                              setCustomMoveEnd(val);
+                            }
+                          }}
+                          className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-xs font-mono text-white/30 uppercase tracking-widest">
+                          {t.endMove}: <span className="text-orange-400">{customMoveEnd}</span>
+                        </label>
+                        <input
+                          type="range"
+                          min="1"
+                          max={customSgfMoves.length}
+                          value={customMoveEnd}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value);
+                            setCustomMoveEnd(val);
+                            if (val < customMoveStart) {
+                              setCustomMoveStart(val);
+                            }
+                          }}
+                          className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
