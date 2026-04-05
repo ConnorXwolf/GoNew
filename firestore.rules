@@ -16,6 +16,27 @@ service cloud.firestore {
     //
     // ===============================================================
 
+    // Collection: userSgfs
+    // Document ID: sgfId (Unique ID)
+    // Fields:
+    //   - id: string (required) - Unique ID
+    //   - title: string (required) - SGF title
+    //   - sgf: string (required) - SGF content
+    //   - createdAt: int (required) - Timestamp
+    //   - moveCount: int (optional) - Number of moves
+    //   - folderId: string (optional) - Folder ID
+    //
+    // ===============================================================
+
+    // Collection: userFolders
+    // Document ID: folderId (Unique ID)
+    // Fields:
+    //   - id: string (required) - Unique ID
+    //   - name: string (required) - Folder name
+    //   - createdAt: int (required) - Timestamp
+    //
+    // ===============================================================
+
     // ===============================================================
     // Helper Functions
     // ===============================================================
@@ -60,6 +81,23 @@ service cloud.firestore {
              data.lastReviewDate is int;
     }
 
+    function isValidUserSgf(data) {
+      return data.keys().hasAll(['id', 'title', 'sgf', 'createdAt']) &&
+             data.id is string &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 100 &&
+             data.sgf is string && data.sgf.size() > 0 && data.sgf.size() < 1000000 &&
+             data.createdAt is int &&
+             (!('moveCount' in data) || data.moveCount is int) &&
+             (!('folderId' in data) || data.folderId is string);
+    }
+
+    function isValidUserFolder(data) {
+      return data.keys().hasAll(['id', 'name', 'createdAt']) &&
+             data.id is string &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 50 &&
+             data.createdAt is int;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -84,6 +122,34 @@ service cloud.firestore {
       
       // Allow update if owner and data is valid
       allow update: if isOwner(userId) && isValidSRSData(request.resource.data);
+    }
+
+    match /userSgfs/{userId}/sgfs/{sgfId} {
+      // Only the owner can read/write their own SGFs
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Allow creation if authenticated and data is valid
+      allow create: if isOwner(userId) && isValidUserSgf(request.resource.data);
+      
+      // Allow update if owner and data is valid
+      allow update: if isOwner(userId) && isValidUserSgf(request.resource.data);
+
+      // Allow deletion if owner
+      allow delete: if isOwner(userId);
+    }
+
+    match /userFolders/{userId}/folders/{folderId} {
+      // Only the owner can read/write their own folders
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Allow creation if authenticated and data is valid
+      allow create: if isOwner(userId) && isValidUserFolder(request.resource.data);
+      
+      // Allow update if owner and data is valid
+      allow update: if isOwner(userId) && isValidUserFolder(request.resource.data);
+
+      // Allow deletion if owner
+      allow delete: if isOwner(userId);
     }
 
     // Default deny

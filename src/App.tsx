@@ -26,10 +26,17 @@ import {
   Languages,
   Shuffle,
   Calendar,
-  BookOpen
+  BookOpen,
+  FileText,
+  Save,
+  Trash2,
+  Folder,
+  FolderPlus,
+  MoreVertical,
+  Edit2
 } from 'lucide-react';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { doc, getDoc, setDoc, serverTimestamp, collection, getDocs, query, where } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, getDocs, query, where, deleteDoc } from 'firebase/firestore';
 import { 
   auth, 
   db, 
@@ -62,6 +69,29 @@ const App: React.FC = () => {
   });
 
   const t = translations[language];
+
+  const parseSgf = (sgf: string): { moves: Stone[], boardSize: number } => {
+    const moves: Stone[] = [];
+    let boardSize = 19;
+
+    // Extract board size
+    const szMatch = sgf.match(/SZ\[(\d+)\]/);
+    if (szMatch) boardSize = parseInt(szMatch[1]);
+
+    // Extract moves
+    const moveRegex = /([BW])\[([a-z]{2})\]/g;
+    let match;
+    let moveCount = 1;
+    while ((match = moveRegex.exec(sgf)) !== null) {
+      const color = match[1] === 'B' ? 'black' : 'white';
+      const coords = match[2];
+      const x = coords.charCodeAt(0) - 97;
+      const y = coords.charCodeAt(1) - 97;
+      moves.push({ x, y, color, moveNumber: moveCount++ });
+    }
+
+    return { moves, boardSize };
+  };
 
   const LEVELS = [
     { id: '全部', label: t.all },
@@ -109,15 +139,71 @@ const App: React.FC = () => {
     return saved === 'true';
   });
   const [previewStone, setPreviewStone] = useState<Stone | null>(null);
+
+  // Custom SGF States
+  interface UserSgf {
+    id: string;
+    title: string;
+    sgf: string;
+    createdAt: number;
+    moveCount?: number;
+    folderId?: string | null;
+  }
+  interface UserFolder {
+    id: string;
+    name: string;
+    createdAt: number;
+  }
+  const [userSgfs, setUserSgfs] = useState<UserSgf[]>([]);
+  const [userFolders, setUserFolders] = useState<UserFolder[]>([]);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | 'all' | 'unclassified'>('all');
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [saveToFolderId, setSaveToFolderId] = useState<string>('');
+  const [rawSgfContent, setRawSgfContent] = useState('');
+  const [customSgfMoves, setCustomSgfMoves] = useState<Stone[]>([]);
+  const [customBoardSize, setCustomBoardSize] = useState(19);
+  const [customMoveCount, setCustomMoveCount] = useState(10);
+  const [customProblem, setCustomProblem] = useState<Problem | null>(null);
+  const [sgfFileName, setSgfFileName] = useState('');
+  const [sgfErrorMsg, setSgfErrorMsg] = useState('');
+  const [isSavingSgf, setIsSavingSgf] = useState(false);
+  const [loadedSgfId, setLoadedSgfId] = useState<string | null>(null);
+
   const [srsData, setSrsData] = useState<Record<string, SRSData>>(() => {
     const saved = localStorage.getItem('gomemo_srs_v1');
     return saved ? JSON.parse(saved) : {};
   });
-  const [isReviewMode, setIsReviewMode] = useState(false);
+  
+  type AppMode = 'training' | 'review' | 'mySgf';
+  const [mode, setMode] = useState<AppMode>('training');
 
   const dragStartRef = useRef({ x: 0, y: 0 });
   
   const [user, authLoading] = useAuthState(auth);
+
+  useEffect(() => {
+    if (user && mode === 'mySgf') {
+      const fetchData = async () => {
+        try {
+          // Fetch SGFs
+          const sgfQ = query(collection(db, 'userSgfs', user.uid, 'sgfs'));
+          const sgfSnapshot = await getDocs(sgfQ);
+          const sgfs = sgfSnapshot.docs.map(doc => doc.data() as UserSgf);
+          setUserSgfs(sgfs.sort((a, b) => b.createdAt - a.createdAt));
+
+          // Fetch Folders
+          const folderQ = query(collection(db, 'userFolders', user.uid, 'folders'));
+          const folderSnapshot = await getDocs(folderQ);
+          const folders = folderSnapshot.docs.map(doc => doc.data() as UserFolder);
+          setUserFolders(folders.sort((a, b) => b.createdAt - a.createdAt));
+        } catch (error) {
+          console.error("Failed to fetch user data:", error);
+        }
+      };
+      fetchData();
+    }
+  }, [user, mode]);
 
   useEffect(() => {
     if (user) {
@@ -187,6 +273,7 @@ const App: React.FC = () => {
       '中階': { attempted: 0, correct: 0 },
       '高階': { attempted: 0, correct: 0 },
       '極限': { attempted: 0, correct: 0 },
+      '我的棋譜': { attempted: 0, correct: 0 },
     };
     if (saved) {
       return { ...initialStats, ...JSON.parse(saved) };
@@ -203,6 +290,7 @@ const App: React.FC = () => {
   }, []);
 
   const [refreshKey, setRefreshKey] = useState(0);
+  const lastProblemIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     localStorage.setItem('gomemo_stats_v3', JSON.stringify(stats));
@@ -265,7 +353,7 @@ const App: React.FC = () => {
   // Handle initial SRS data load for Review mode
   const [srsInitialized, setSrsInitialized] = useState(false);
   useEffect(() => {
-    if (isReviewMode && !srsInitialized && Object.keys(srsData).length > 0) {
+    if (mode === 'review' && !srsInitialized && Object.keys(srsData).length > 0) {
       const filtered = allProblems.filter(p => {
         const sizeMatch = p.boardSize === selectedBoardSize;
         const srs = srsData[p.id];
@@ -276,13 +364,13 @@ const App: React.FC = () => {
       setCurrentProblemIndex(0);
       setSrsInitialized(true);
     }
-  }, [isReviewMode, srsData, selectedBoardSize, srsInitialized]);
+  }, [mode, srsData, selectedBoardSize, srsInitialized]);
 
   useEffect(() => {
     setSrsInitialized(false);
     const filtered = allProblems.filter(p => {
       const sizeMatch = p.boardSize === selectedBoardSize;
-      if (isReviewMode) {
+      if (mode === 'review') {
         const srs = srsData[p.id];
         return sizeMatch && srs && srs.nextReviewDate <= Date.now();
       } else {
@@ -294,9 +382,199 @@ const App: React.FC = () => {
     const shuffled = shuffleArray([...filtered]);
     setFilteredProblems(shuffled);
     setCurrentProblemIndex(0);
-  }, [selectedLevel, selectedBoardSize, isReviewMode, allProblems, refreshKey]);
+  }, [selectedLevel, selectedBoardSize, mode, allProblems, refreshKey]);
 
-  const currentProblem = filteredProblems[currentProblemIndex];
+  const currentProblem = mode === 'mySgf' ? customProblem : filteredProblems[currentProblemIndex];
+
+  const handleSgfUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setSgfFileName(file.name);
+    setSgfErrorMsg('');
+    setLoadedSgfId(null);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      setRawSgfContent(content);
+      try {
+        const { moves, boardSize } = parseSgf(content);
+        if (moves.length === 0) {
+          setSgfErrorMsg(t.sgfError);
+          return;
+        }
+        setCustomSgfMoves(moves);
+        setCustomBoardSize(boardSize);
+        setCustomMoveCount(Math.min(moves.length, 10));
+      } catch (err) {
+        setSgfErrorMsg(t.sgfError);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const saveSgf = async () => {
+    if (!user || !sgfFileName || customSgfMoves.length === 0 || !rawSgfContent) return;
+    
+    setIsSavingSgf(true);
+    const newSgf: UserSgf = {
+      id: 'sgf-' + Date.now(),
+      title: sgfFileName,
+      sgf: rawSgfContent,
+      createdAt: Date.now(),
+      moveCount: customMoveCount,
+      folderId: saveToFolderId || null
+    };
+
+    try {
+      await setDoc(doc(db, 'userSgfs', user.uid, 'sgfs', newSgf.id), newSgf);
+      setUserSgfs(prev => [newSgf, ...prev]);
+    } catch (error) {
+      console.error("Failed to save SGF:", error);
+    } finally {
+      setIsSavingSgf(false);
+    }
+  };
+
+  const createFolder = async () => {
+    if (!user || !newFolderName.trim()) return;
+    const newFolder: UserFolder = {
+      id: 'folder-' + Date.now(),
+      name: newFolderName.trim(),
+      createdAt: Date.now()
+    };
+    try {
+      await setDoc(doc(db, 'userFolders', user.uid, 'folders', newFolder.id), newFolder);
+      setUserFolders(prev => [newFolder, ...prev]);
+      setNewFolderName('');
+      setIsCreatingFolder(false);
+    } catch (error) {
+      console.error("Failed to create folder:", error);
+    }
+  };
+
+  const renameFolder = async (folderId: string, newName: string) => {
+    if (!user || !newName.trim()) return;
+    try {
+      await setDoc(doc(db, 'userFolders', user.uid, 'folders', folderId), { name: newName.trim() }, { merge: true });
+      setUserFolders(prev => prev.map(f => f.id === folderId ? { ...f, name: newName.trim() } : f));
+    } catch (error) {
+      console.error("Failed to rename folder:", error);
+    }
+  };
+
+  const deleteFolder = async (folderId: string) => {
+    if (!user) return;
+    try {
+      await deleteDoc(doc(db, 'userFolders', user.uid, 'folders', folderId));
+      setUserFolders(prev => prev.filter(f => f.id !== folderId));
+      // Also update SGFs in this folder to be unclassified
+      const sgfsInFolder = userSgfs.filter(s => s.folderId === folderId);
+      for (const sgf of sgfsInFolder) {
+        await setDoc(doc(db, 'userSgfs', user.uid, 'sgfs', sgf.id), { folderId: null }, { merge: true });
+      }
+      setUserSgfs(prev => prev.map(s => s.folderId === folderId ? { ...s, folderId: null } : s));
+      if (selectedFolderId === folderId) setSelectedFolderId('all');
+    } catch (error) {
+      console.error("Failed to delete folder:", error);
+    }
+  };
+
+  const moveSgfToFolder = async (sgfId: string, folderId: string | null) => {
+    if (!user) return;
+    try {
+      await setDoc(doc(db, 'userSgfs', user.uid, 'sgfs', sgfId), { folderId: folderId || null }, { merge: true });
+      setUserSgfs(prev => prev.map(s => s.id === sgfId ? { ...s, folderId: folderId || null } : s));
+    } catch (error) {
+      console.error("Failed to move SGF:", error);
+    }
+  };
+
+  const loadSavedSgf = (saved: UserSgf) => {
+    setSgfFileName(saved.title);
+    setRawSgfContent(saved.sgf);
+    setSgfErrorMsg('');
+    setLoadedSgfId(saved.id);
+    try {
+      const { moves, boardSize } = parseSgf(saved.sgf);
+      setCustomSgfMoves(moves);
+      setCustomBoardSize(boardSize);
+      setCustomMoveCount(saved.moveCount || Math.min(moves.length, 10));
+    } catch (err) {
+      setSgfErrorMsg(t.sgfError);
+    }
+  };
+
+  const deleteSavedSgf = async (sgfId: string) => {
+    if (!user) return;
+    try {
+      await deleteDoc(doc(db, 'userSgfs', user.uid, 'sgfs', sgfId));
+      setUserSgfs(prev => prev.filter(s => s.id !== sgfId));
+      if (loadedSgfId === sgfId) {
+        setLoadedSgfId(null);
+        setSgfFileName('');
+        setCustomSgfMoves([]);
+        setCustomProblem(null);
+      }
+    } catch (error) {
+      console.error("Failed to delete SGF:", error);
+    }
+  };
+
+  const startCustomTraining = () => {
+    if (customSgfMoves.length === 0) return;
+
+    const solution = customSgfMoves.slice(0, customMoveCount);
+    const newProblem: Problem = {
+      id: 'custom-' + Date.now(),
+      title: sgfFileName,
+      description: `Custom SGF: ${customMoveCount} moves`,
+      initialStones: [],
+      solution: solution,
+      explanation: 'Custom SGF problem',
+      difficulty: 'hard',
+      viewRange: { xStart: 0, xEnd: customBoardSize - 1, yStart: 0, yEnd: customBoardSize - 1 },
+      turn: 'black',
+      boardSize: customBoardSize,
+      level: '我的棋譜'
+    };
+
+    setCustomProblem(newProblem);
+    lastProblemIdRef.current = newProblem.id;
+    
+    // Phase 1: Memorization
+    setStatus('memorizing');
+    setStones(solution);
+    setMemoryTimer(30);
+    
+    if (timerRef.current) clearInterval(timerRef.current);
+    
+    timerRef.current = setInterval(() => {
+      setMemoryTimer(prev => {
+        if (prev <= 1) {
+          if (timerRef.current) clearInterval(timerRef.current);
+          // Phase 2: Placing
+          setStatus('placing');
+          setStones([]);
+          setUserStones([]);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    if (!hasAttemptedCurrent) {
+      setStats(prev => ({
+        ...prev,
+        '我的棋譜': {
+          ...prev['我的棋譜'],
+          attempted: prev['我的棋譜'].attempted + 1
+        }
+      }));
+      setHasAttemptedCurrent(true);
+    }
+  };
 
   const resetProblem = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -317,8 +595,11 @@ const App: React.FC = () => {
   }, [currentProblem, selectedLevel]);
 
   useEffect(() => {
-    resetProblem();
-  }, [resetProblem]);
+    if (currentProblem && currentProblem.id !== lastProblemIdRef.current) {
+      resetProblem();
+      lastProblemIdRef.current = currentProblem.id;
+    }
+  }, [currentProblem, resetProblem]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -506,7 +787,9 @@ const App: React.FC = () => {
       }
       
       // SRS Update: 5 if no peek, 3 if peek used
-      updateSRS(currentProblem.id, peekUsed ? 3 : 5);
+      if (mode !== 'mySgf') {
+        updateSRS(currentProblem.id, peekUsed ? 3 : 5);
+      }
       
       setStatus('correct');
       setScore(s => s + 100);
@@ -524,7 +807,9 @@ const App: React.FC = () => {
       } else {
         setStatus('wrong');
         // SRS Update: 0 if failed all attempts
-        updateSRS(currentProblem.id, 0);
+        if (mode !== 'mySgf') {
+          updateSRS(currentProblem.id, 0);
+        }
         // After 3 attempts, show the answer and hide the overlay after 1 second
         setTimeout(() => {
           setStatus('result');
@@ -552,6 +837,10 @@ const App: React.FC = () => {
   };
 
   const nextProblem = () => {
+    if (mode === 'mySgf') {
+      resetProblem();
+      return;
+    }
     if (filteredProblems.length === 0) return;
     
     // Pick a random index instead of sequential
@@ -567,6 +856,10 @@ const App: React.FC = () => {
   };
 
   const prevProblem = () => {
+    if (mode === 'mySgf') {
+      resetProblem();
+      return;
+    }
     if (filteredProblems.length === 0) return;
     // For random mode, prev can just be another random one or we can keep it sequential
     // Let's keep it sequential for those who want to go back to what they just saw
@@ -738,7 +1031,9 @@ const App: React.FC = () => {
           <div className="h-6 sm:h-8 w-px bg-white/10 hidden xs:block" />
           <div className="flex items-center gap-1.5 sm:gap-3 bg-white/5 px-2 sm:px-4 py-1 sm:py-2 rounded-full border border-white/10">
             <Target className="w-3 h-3 sm:w-4 sm:h-4 text-blue-400" />
-            <span className="text-[10px] sm:text-sm font-bold uppercase tracking-wider text-blue-400">{currentProblemIndex + 1}/{filteredProblems.length}</span>
+            <span className="text-[10px] sm:text-sm font-bold uppercase tracking-wider text-blue-400">
+              {mode === 'mySgf' ? '1/1' : `${currentProblemIndex + 1}/${filteredProblems.length}`}
+            </span>
           </div>
         </div>
       </header>
@@ -753,9 +1048,9 @@ const App: React.FC = () => {
                 <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.mode}</label>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => setIsReviewMode(false)}
+                    onClick={() => setMode('training')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold uppercase tracking-widest transition-all ${
-                      !isReviewMode 
+                      mode === 'training' 
                         ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' 
                         : 'bg-white/5 text-white/40 hover:bg-white/10'
                     }`}
@@ -764,9 +1059,9 @@ const App: React.FC = () => {
                     {t.training}
                   </button>
                   <button
-                    onClick={() => setIsReviewMode(true)}
+                    onClick={() => setMode('review')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold uppercase tracking-widest transition-all ${
-                      isReviewMode 
+                      mode === 'review' 
                         ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20' 
                         : 'bg-white/5 text-white/40 hover:bg-white/10'
                     }`}
@@ -779,6 +1074,17 @@ const App: React.FC = () => {
                       </span>
                     )}
                   </button>
+                  <button
+                    onClick={() => setMode('mySgf')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold uppercase tracking-widest transition-all ${
+                      mode === 'mySgf' 
+                        ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' 
+                        : 'bg-white/5 text-white/40 hover:bg-white/10'
+                    }`}
+                  >
+                    <FileText className="w-4 h-4" />
+                    {t.mySgf}
+                  </button>
                 </div>
               </div>
               
@@ -788,6 +1094,7 @@ const App: React.FC = () => {
                   {[9, 13, 19].map(size => (
                     <button
                       key={size}
+                      disabled={mode === 'mySgf'}
                       onClick={() => { 
                         setSelectedBoardSize(size); 
                         setCurrentProblemIndex(0);
@@ -797,7 +1104,7 @@ const App: React.FC = () => {
                         selectedBoardSize === size 
                           ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' 
                           : 'bg-white/5 text-white/40 hover:bg-white/10'
-                      }`}
+                      } ${mode === 'mySgf' ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       {size === 9 ? t.size9 : size === 13 ? t.size13 : t.size19}
                     </button>
@@ -806,7 +1113,7 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {!isReviewMode && (
+            {mode === 'training' && (
               <div className="space-y-2">
                 <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.difficulty}</label>
                 <div className="flex flex-wrap gap-2">
@@ -828,6 +1135,248 @@ const App: React.FC = () => {
                     </button>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {mode === 'mySgf' && (
+              <div className="mt-4 p-4 bg-white/5 rounded-2xl border border-white/10 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className="flex-1">
+                    <label className="block text-sm font-mono text-white/30 uppercase tracking-widest mb-2">
+                      {t.uploadSgf}
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept=".sgf"
+                        onChange={handleSgfUpload}
+                        className="block w-full text-sm text-white/60 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-500 file:text-black hover:file:bg-orange-400"
+                      />
+                      {user && (
+                        <div className="flex gap-1">
+                          {selectedFolderId !== 'all' && selectedFolderId !== 'unclassified' && (
+                            <button 
+                              onClick={() => {
+                                const folder = userFolders.find(f => f.id === selectedFolderId);
+                                if (folder && confirm(`${t.delete} ${folder.name}?`)) deleteFolder(folder.id);
+                              }}
+                              className="relative p-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-xl transition-all shrink-0"
+                              title={`${t.delete} ${t.folders}`}
+                            >
+                              <Folder className="w-4 h-4" />
+                              <Trash2 className="w-3 h-3 absolute -bottom-0.5 -right-0.5 bg-black rounded-full p-0.5" />
+                            </button>
+                          )}
+                          {loadedSgfId && (
+                            <button 
+                              onClick={() => {
+                                const sgf = userSgfs.find(s => s.id === loadedSgfId);
+                                if (sgf && confirm(`${t.delete} ${sgf.title}?`)) deleteSavedSgf(sgf.id);
+                              }}
+                              className="relative p-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-xl transition-all shrink-0"
+                              title={`${t.delete} ${t.mySgf}`}
+                            >
+                              <FileText className="w-4 h-4" />
+                              <Trash2 className="w-3 h-3 absolute -bottom-0.5 -right-0.5 bg-black rounded-full p-0.5" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {sgfFileName && (
+                      <p className="mt-2 text-xs text-orange-400 font-mono italic">
+                        {sgfFileName} ({customSgfMoves.length} {t.moves})
+                      </p>
+                    )}
+                    {sgfErrorMsg && (
+                      <p className="mt-2 text-xs text-red-400 font-mono italic">
+                        {sgfErrorMsg}
+                      </p>
+                    )}
+                  </div>
+
+                  {customSgfMoves.length > 0 && (
+                    <div className="flex-1 space-y-2">
+                      <label className="block text-sm font-mono text-white/30 uppercase tracking-widest">
+                        {t.selectMoves}: <span className="text-orange-400">{customMoveCount}</span>
+                      </label>
+                      <input
+                        type="range"
+                        min="1"
+                        max={customSgfMoves.length}
+                        value={customMoveCount}
+                        onChange={(e) => setCustomMoveCount(parseInt(e.target.value))}
+                        className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {customSgfMoves.length > 0 && (
+                  <div className="flex flex-col gap-3">
+                    {user && userFolders.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs font-mono text-white/30 uppercase tracking-widest whitespace-nowrap">
+                          {t.saveTo}:
+                        </label>
+                        <select
+                          value={saveToFolderId}
+                          onChange={(e) => setSaveToFolderId(e.target.value)}
+                          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white/80 outline-none focus:border-orange-500/50 transition-all"
+                        >
+                          <option value="">{t.unclassified}</option>
+                          {userFolders.map(f => (
+                            <option key={f.id} value={f.id}>{f.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={startCustomTraining}
+                        className="flex-1 py-3 rounded-xl bg-orange-500 hover:bg-orange-400 text-black font-bold uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-orange-500/20"
+                      >
+                        {t.confirmSgf}
+                      </button>
+                      {user && (
+                        <button
+                          onClick={saveSgf}
+                          disabled={isSavingSgf}
+                          className="px-4 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all active:scale-95 disabled:opacity-50"
+                          title={t.saveTo}
+                        >
+                          {isSavingSgf ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {user && (
+                  <div className="pt-4 border-t border-white/10 space-y-4">
+                    {/* Folder Management Header */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Folder className="w-4 h-4 text-orange-400" />
+                        <span className="text-xs font-mono text-white/40 uppercase tracking-widest">{t.folders}</span>
+                      </div>
+                      <button
+                        onClick={() => setIsCreatingFolder(!isCreatingFolder)}
+                        className="p-1.5 hover:bg-white/5 rounded-lg text-white/40 hover:text-orange-400 transition-all"
+                        title={t.addFolder}
+                      >
+                        <FolderPlus className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Create Folder Input */}
+                    <AnimatePresence>
+                      {isCreatingFolder && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="flex gap-2 mb-4">
+                            <input
+                              type="text"
+                              value={newFolderName}
+                              onChange={(e) => setNewFolderName(e.target.value)}
+                              placeholder={t.folderName}
+                              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white outline-none focus:border-orange-500/50 transition-all"
+                              onKeyDown={(e) => e.key === 'Enter' && createFolder()}
+                            />
+                            <button
+                              onClick={createFolder}
+                              className="px-4 py-2 bg-orange-500 text-black rounded-xl text-sm font-bold"
+                            >
+                              {t.addFolder}
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Folder Tabs */}
+                    <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                      <button
+                        onClick={() => setSelectedFolderId('all')}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
+                          selectedFolderId === 'all' ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'
+                        }`}
+                      >
+                        {t.allSgfs}
+                      </button>
+                      <button
+                        onClick={() => setSelectedFolderId('unclassified')}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
+                          selectedFolderId === 'unclassified' ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'
+                        }`}
+                      >
+                        {t.unclassified}
+                      </button>
+                      {userFolders.map(folder => (
+                        <div key={folder.id} className="relative group/folder">
+                          <button
+                            onClick={() => setSelectedFolderId(folder.id)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
+                              selectedFolderId === folder.id ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'
+                            }`}
+                          >
+                            {folder.name}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* SGF List Filtered by Folder */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                      {userSgfs
+                        .filter(sgf => {
+                          if (selectedFolderId === 'all') return true;
+                          if (selectedFolderId === 'unclassified') return !sgf.folderId;
+                          return sgf.folderId === selectedFolderId;
+                        })
+                        .map(saved => (
+                          <div 
+                            key={saved.id}
+                            className="group flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:border-orange-500/30 transition-all"
+                          >
+                            <button
+                              onClick={() => loadSavedSgf(saved)}
+                              className="flex-1 text-left truncate mr-2"
+                            >
+                              <p className="text-sm font-bold text-white/80 truncate group-hover:text-orange-400 transition-colors">
+                                {saved.title}
+                              </p>
+                              <p className="text-[10px] text-white/30 font-mono">
+                                {saved.moveCount} moves • {new Date(saved.createdAt).toLocaleDateString()}
+                                {saved.folderId && (
+                                  <span className="ml-2 text-orange-400/50">
+                                    [{userFolders.find(f => f.id === saved.folderId)?.name}]
+                                  </span>
+                                )}
+                              </p>
+                            </button>
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                              <select
+                                value={saved.folderId || ''}
+                                onChange={(e) => moveSgfToFolder(saved.id, e.target.value || null)}
+                                className="bg-transparent border-none text-[10px] text-white/20 hover:text-white/60 outline-none cursor-pointer"
+                                title={t.selectFolder}
+                              >
+                                <option value="">{t.unclassified}</option>
+                                {userFolders.map(f => (
+                                  <option key={f.id} value={f.id}>{f.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -960,7 +1509,7 @@ const App: React.FC = () => {
                     <Brain className="w-12 h-12 mb-4 opacity-20" />
                     <p className="text-sm font-mono uppercase tracking-widest">
                       {status === 'idle' 
-                        ? (isReviewMode && filteredProblems.length === 0 ? t.noDueReviews : t.selectProblemToStart) 
+                        ? (mode === 'review' && filteredProblems.length === 0 ? t.noDueReviews : t.selectProblemToStart) 
                         : t.noProblems}
                     </p>
                   </div>
@@ -1142,7 +1691,12 @@ const App: React.FC = () => {
                 {status === 'idle' ? (
                   <button 
                     onClick={startTraining}
-                    className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-orange-500 hover:bg-orange-400 text-black flex items-center gap-2 sm:gap-3 transition-all active:scale-95 group shadow-lg shadow-orange-500/20"
+                    disabled={mode === 'mySgf' && !customProblem}
+                    className={`px-6 sm:px-8 py-3 sm:py-4 rounded-xl flex items-center gap-2 sm:gap-3 transition-all active:scale-95 group shadow-lg ${
+                      (mode === 'mySgf' && !customProblem)
+                        ? 'bg-white/5 text-white/20 cursor-not-allowed'
+                        : 'bg-orange-500 hover:bg-orange-400 text-black shadow-orange-500/20'
+                    }`}
                   >
                     <Brain className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform" />
                     <span className="font-bold uppercase tracking-widest text-xs sm:text-sm">{t.startTraining}</span>
@@ -1276,7 +1830,7 @@ const App: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 gap-4">
-                {LEVELS.filter(l => l.id !== '全部').map(level => {
+                {[...LEVELS.filter(l => l.id !== '全部'), { id: '我的棋譜', label: t.mySgf }].map(level => {
                   const s = stats[level.id] || { attempted: 0, correct: 0 };
                   const rate = s.attempted > 0 ? Math.round((s.correct / s.attempted) * 100) : 0;
                   

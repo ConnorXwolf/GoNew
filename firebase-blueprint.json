@@ -16,12 +16,38 @@
             "基礎": { "$ref": "LevelStat" },
             "中階": { "$ref": "LevelStat" },
             "高階": { "$ref": "LevelStat" },
-            "極限": { "$ref": "LevelStat" }
+            "極限": { "$ref": "LevelStat" },
+            "我的棋譜": { "$ref": "LevelStat" }
           }
         },
         "lastUpdated": { "type": "string", "format": "date-time", "description": "Last sync time" }
       },
       "required": ["uid", "stats"]
+    },
+    "UserSgf": {
+      "title": "UserSgf",
+      "description": "A saved SGF file for the user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "sgf": { "type": "string" },
+        "createdAt": { "type": "integer" },
+        "moveCount": { "type": "integer" },
+        "folderId": { "type": "string", "description": "ID of the folder this SGF belongs to" }
+      },
+      "required": ["id", "title", "sgf", "createdAt"]
+    },
+    "UserFolder": {
+      "title": "UserFolder",
+      "description": "A folder created by the user to categorize SGFs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "createdAt": { "type": "integer" }
+      },
+      "required": ["id", "name", "createdAt"]
     },
     "LevelStat": {
       "title": "LevelStat",
@@ -55,6 +81,14 @@
     "/userSRS/{userId}/problems/{problemId}": {
       "schema": "SRSData",
       "description": "User SRS data for a problem"
+    },
+    "/userSgfs/{userId}/sgfs/{sgfId}": {
+      "schema": "UserSgf",
+      "description": "User's saved SGF files"
+    },
+    "/userFolders/{userId}/folders/{folderId}": {
+      "schema": "UserFolder",
+      "description": "User's custom folders for SGFs"
     }
   }
 }
