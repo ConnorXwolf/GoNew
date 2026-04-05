@@ -104,6 +104,11 @@ const App: React.FC = () => {
   const [isZoomed, setIsZoomed] = useState(false);
   const [zoomOffset, setZoomOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [isConfirmMoveEnabled, setIsConfirmMoveEnabled] = useState(() => {
+    const saved = localStorage.getItem('gomemo_confirm_move');
+    return saved === 'true';
+  });
+  const [previewStone, setPreviewStone] = useState<Stone | null>(null);
   const [srsData, setSrsData] = useState<Record<string, SRSData>>(() => {
     const saved = localStorage.getItem('gomemo_srs_v1');
     return saved ? JSON.parse(saved) : {};
@@ -253,6 +258,10 @@ const App: React.FC = () => {
     localStorage.setItem('gomemo_lang', language);
   }, [language]);
 
+  useEffect(() => {
+    localStorage.setItem('gomemo_confirm_move', isConfirmMoveEnabled.toString());
+  }, [isConfirmMoveEnabled]);
+
   // Handle initial SRS data load for Review mode
   const [srsInitialized, setSrsInitialized] = useState(false);
   useEffect(() => {
@@ -304,6 +313,7 @@ const App: React.FC = () => {
     setHasWonCurrent(false);
     setZoomOffset({ x: 0, y: 0 });
     setIsZoomed(false);
+    setPreviewStone(null);
   }, [currentProblem, selectedLevel]);
 
   useEffect(() => {
@@ -386,6 +396,7 @@ const App: React.FC = () => {
     if (status !== 'placing' || peekUsed || selectedLevel === '極限') return;
     
     setPeekUsed(true);
+    setPreviewStone(null);
     const currentUserStones = [...userStones];
     setStatus('memorizing');
     setStones([...currentProblem!.initialStones, ...currentProblem!.solution]);
@@ -441,11 +452,33 @@ const App: React.FC = () => {
       // Let's just do nothing if it's already there to avoid confusion.
       return;
     } else {
-      const newStones = [...userStones, newMove];
-      setUserStones(newStones);
-      setStones([...currentProblem.initialStones, ...newStones]);
-      setLastMove(newMove);
+      if (isConfirmMoveEnabled) {
+        // If clicking the same spot as preview, confirm it
+        if (previewStone && previewStone.x === x && previewStone.y === y) {
+          confirmMove();
+        } else {
+          setPreviewStone(newMove);
+        }
+      } else {
+        const newStones = [...userStones, newMove];
+        setUserStones(newStones);
+        setStones([...currentProblem.initialStones, ...newStones]);
+        setLastMove(newMove);
+      }
     }
+  };
+
+  const confirmMove = () => {
+    if (!previewStone || !currentProblem) return;
+    const newStones = [...userStones, previewStone];
+    setUserStones(newStones);
+    setStones([...currentProblem.initialStones, ...newStones]);
+    setLastMove(previewStone);
+    setPreviewStone(null);
+  };
+
+  const cancelMove = () => {
+    setPreviewStone(null);
   };
 
   const checkAnswer = () => {
@@ -515,6 +548,7 @@ const App: React.FC = () => {
     setIsZoomed(false);
     setZoomOffset({ x: 0, y: 0 });
     setMemoryTimer(0);
+    setPreviewStone(null);
   };
 
   const nextProblem = () => {
@@ -796,6 +830,24 @@ const App: React.FC = () => {
                 </div>
               </div>
             )}
+
+            <div className="space-y-2">
+              <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.confirmMoveToggle}</label>
+              <div className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-xl border border-white/10 w-fit">
+                <button
+                  onClick={() => setIsConfirmMoveEnabled(!isConfirmMoveEnabled)}
+                  className={`relative w-10 h-5 rounded-full transition-colors ${isConfirmMoveEnabled ? 'bg-orange-500' : 'bg-white/10'}`}
+                >
+                  <motion.div
+                    animate={{ x: isConfirmMoveEnabled ? 22 : 2 }}
+                    className="absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm"
+                  />
+                </button>
+                <span className={`text-xs font-bold uppercase tracking-widest ${isConfirmMoveEnabled ? 'text-white' : 'text-white/40'}`}>
+                  {isConfirmMoveEnabled ? 'ON' : 'OFF'}
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Status Bar (Timer & Mode) */}
@@ -899,6 +951,7 @@ const App: React.FC = () => {
                     viewRange={currentProblem.viewRange}
                     onIntersectionClick={handleIntersectionClick}
                     lastMove={lastMove}
+                    previewStone={previewStone || undefined}
                     showMoveNumbers={true}
                     boardSize={currentProblem.boardSize || 19}
                   />
@@ -1006,7 +1059,10 @@ const App: React.FC = () => {
                   <div className="w-px h-4 bg-white/10 mx-1" />
 
                   <button
-                    onClick={() => setSelectedTool(selectedTool === 'eraser' ? 'black' : 'eraser')}
+                    onClick={() => {
+                      setSelectedTool(selectedTool === 'eraser' ? 'black' : 'eraser');
+                      setPreviewStone(null);
+                    }}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
                       selectedTool === 'eraser' ? 'bg-red-500 text-white font-bold' : 'text-white/40 hover:text-red-400'
                     }`}
@@ -1025,6 +1081,29 @@ const App: React.FC = () => {
                     <span className="text-sm uppercase tracking-widest">{t.magnify}</span>
                   </button>
                 </div>
+
+                {previewStone && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="flex items-center gap-3"
+                  >
+                    <button
+                      onClick={confirmMove}
+                      className="flex items-center gap-2 px-6 py-2 rounded-xl bg-emerald-500 text-black font-bold shadow-lg shadow-emerald-500/20 active:scale-95"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span className="text-sm uppercase tracking-widest">{t.confirmMoveBtn}</span>
+                    </button>
+                    <button
+                      onClick={cancelMove}
+                      className="flex items-center gap-2 px-6 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/10 active:scale-95"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      <span className="text-sm uppercase tracking-widest">{t.cancelMoveBtn}</span>
+                    </button>
+                  </motion.div>
+                )}
 
                 {selectedLevel !== '極限' && !peekUsed && (
                   <button

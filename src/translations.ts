@@ -70,7 +70,10 @@ export const translations = {
     gameOver: "遊戲結束",
     backToHome: "回到首頁",
     yourAnswer: "您的作答",
-    correctSolution: "正確解答"
+    correctSolution: "正確解答",
+    confirmMoveToggle: "確認落子",
+    confirmMoveBtn: "確認落子",
+    cancelMoveBtn: "取消"
   },
   en: {
     title: "GoMemo • Pattern Memory",
@@ -141,7 +144,10 @@ export const translations = {
     gameOver: "Game Over",
     backToHome: "Back to Home",
     yourAnswer: "Your Answer",
-    correctSolution: "Correct Solution"
+    correctSolution: "Correct Solution",
+    confirmMoveToggle: "Confirm Placement",
+    confirmMoveBtn: "Confirm",
+    cancelMoveBtn: "Cancel"
   },
   ja: {
     title: "GoMemo • 棋型記憶トレーニング",
@@ -212,6 +218,9 @@ export const translations = {
     gameOver: "ゲームオーバー",
     backToHome: "ホームに戻る",
     yourAnswer: "あなたの解答",
-    correctSolution: "正解"
+    correctSolution: "正解",
+    confirmMoveToggle: "着手確認",
+    confirmMoveBtn: "着手を確定",
+    cancelMoveBtn: "キャンセル"
   }
 };

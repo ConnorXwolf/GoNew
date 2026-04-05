@@ -12,6 +12,7 @@ interface GoBoardProps {
   };
   onIntersectionClick: (x: number, y: number) => void;
   lastMove?: Stone;
+  previewStone?: Stone;
   showMoveNumbers?: boolean;
   boardSize?: number;
 }
@@ -22,6 +23,7 @@ export const GoBoard: React.FC<GoBoardProps> = ({
   viewRange,
   onIntersectionClick,
   lastMove,
+  previewStone,
   showMoveNumbers = false,
   boardSize = 19,
 }) => {
@@ -291,6 +293,29 @@ export const GoBoard: React.FC<GoBoardProps> = ({
             </g>
           );
         })}
+
+        {/* Preview Stone (Ghost Stone for confirmation) */}
+        {previewStone && (
+          <g className="pointer-events-none">
+            <circle
+              cx={padding + (previewStone.x - xStart) * cellSize}
+              cy={padding + (previewStone.y - yStart) * cellSize}
+              r={cellSize / 2 - 2}
+              fill={previewStone.color === 'black' ? '#000' : '#fff'}
+              className="opacity-40 animate-pulse"
+            />
+            <circle
+              cx={padding + (previewStone.x - xStart) * cellSize}
+              cy={padding + (previewStone.y - yStart) * cellSize}
+              r={cellSize / 2 + 2}
+              fill="none"
+              stroke={previewStone.color === 'black' ? '#000' : '#fff'}
+              strokeWidth="2"
+              strokeDasharray="2 2"
+              className="opacity-40"
+            />
+          </g>
+        )}
 
         {/* Error/Correct Solution Stones (Ghost Stones) */}
         {errorStones.map((stone, idx) => {
