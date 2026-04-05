@@ -159,6 +159,7 @@ const App: React.FC = () => {
   const [selectedFolderId, setSelectedFolderId] = useState<string | 'all'>('all');
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  const [saveToFolderId, setSaveToFolderId] = useState<string>('');
   const [rawSgfContent, setRawSgfContent] = useState('');
   const [customSgfMoves, setCustomSgfMoves] = useState<Stone[]>([]);
   const [customBoardSize, setCustomBoardSize] = useState(19);
@@ -423,7 +424,7 @@ const App: React.FC = () => {
       sgf: rawSgfContent,
       createdAt: Date.now(),
       moveCount: customMoveCount,
-      folderId: null
+      folderId: saveToFolderId || null
     };
 
     try {
@@ -1213,6 +1214,23 @@ const App: React.FC = () => {
 
                 {customSgfMoves.length > 0 && (
                   <div className="flex flex-col gap-3">
+                    {user && userFolders.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs font-mono text-white/30 uppercase tracking-widest whitespace-nowrap">
+                          {t.selectFolder}:
+                        </label>
+                        <select
+                          value={saveToFolderId}
+                          onChange={(e) => setSaveToFolderId(e.target.value)}
+                          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white/80 outline-none focus:border-orange-500/50 transition-all"
+                        >
+                          <option value="">-</option>
+                          {userFolders.map(f => (
+                            <option key={f.id} value={f.id}>{f.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                     <div className="flex gap-2">
                       <button
                         onClick={startCustomTraining}
