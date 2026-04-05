@@ -156,10 +156,9 @@ const App: React.FC = () => {
   }
   const [userSgfs, setUserSgfs] = useState<UserSgf[]>([]);
   const [userFolders, setUserFolders] = useState<UserFolder[]>([]);
-  const [selectedFolderId, setSelectedFolderId] = useState<string | 'all' | 'unclassified'>('all');
+  const [selectedFolderId, setSelectedFolderId] = useState<string | 'all'>('all');
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
-  const [saveToFolderId, setSaveToFolderId] = useState<string>('');
   const [rawSgfContent, setRawSgfContent] = useState('');
   const [customSgfMoves, setCustomSgfMoves] = useState<Stone[]>([]);
   const [customBoardSize, setCustomBoardSize] = useState(19);
@@ -424,7 +423,7 @@ const App: React.FC = () => {
       sgf: rawSgfContent,
       createdAt: Date.now(),
       moveCount: customMoveCount,
-      folderId: saveToFolderId || null
+      folderId: null
     };
 
     try {
@@ -1154,7 +1153,7 @@ const App: React.FC = () => {
                       />
                       {user && (
                         <div className="flex gap-1">
-                          {selectedFolderId !== 'all' && selectedFolderId !== 'unclassified' && (
+                          {selectedFolderId !== 'all' && (
                             <button 
                               onClick={() => {
                                 const folder = userFolders.find(f => f.id === selectedFolderId);
@@ -1214,23 +1213,6 @@ const App: React.FC = () => {
 
                 {customSgfMoves.length > 0 && (
                   <div className="flex flex-col gap-3">
-                    {user && userFolders.length > 0 && (
-                      <div className="flex items-center gap-2">
-                        <label className="text-xs font-mono text-white/30 uppercase tracking-widest whitespace-nowrap">
-                          {t.saveTo}:
-                        </label>
-                        <select
-                          value={saveToFolderId}
-                          onChange={(e) => setSaveToFolderId(e.target.value)}
-                          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white/80 outline-none focus:border-orange-500/50 transition-all"
-                        >
-                          <option value="">{t.unclassified}</option>
-                          {userFolders.map(f => (
-                            <option key={f.id} value={f.id}>{f.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
                     <div className="flex gap-2">
                       <button
                         onClick={startCustomTraining}
@@ -1308,14 +1290,6 @@ const App: React.FC = () => {
                       >
                         {t.allSgfs}
                       </button>
-                      <button
-                        onClick={() => setSelectedFolderId('unclassified')}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
-                          selectedFolderId === 'unclassified' ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'
-                        }`}
-                      >
-                        {t.unclassified}
-                      </button>
                       {userFolders.map(folder => (
                         <div key={folder.id} className="relative group/folder">
                           <button
@@ -1335,7 +1309,6 @@ const App: React.FC = () => {
                       {userSgfs
                         .filter(sgf => {
                           if (selectedFolderId === 'all') return true;
-                          if (selectedFolderId === 'unclassified') return !sgf.folderId;
                           return sgf.folderId === selectedFolderId;
                         })
                         .map(saved => (
@@ -1366,7 +1339,7 @@ const App: React.FC = () => {
                                 className="bg-transparent border-none text-[10px] text-white/20 hover:text-white/60 outline-none cursor-pointer"
                                 title={t.selectFolder}
                               >
-                                <option value="">{t.unclassified}</option>
+                                <option value="">-</option>
                                 {userFolders.map(f => (
                                   <option key={f.id} value={f.id}>{f.name}</option>
                                 ))}
