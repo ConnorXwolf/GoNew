@@ -961,19 +961,19 @@ const App: React.FC = () => {
           <div className="h-6 sm:h-8 w-px bg-white/10 hidden xs:block" />
           
           {/* Auth Button */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1 sm:gap-3">
             {authLoading ? (
-              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white/5 animate-pulse" />
+              <div className="w-5 h-5 sm:w-8 sm:h-8 rounded-full bg-white/5 animate-pulse" />
             ) : user ? (
-              <div className="flex items-center gap-2 sm:gap-3 bg-white/5 pl-1.5 sm:pl-2 pr-3 sm:pr-4 py-1 sm:py-1.5 rounded-full border border-white/10 group">
-                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-white/20 bg-orange-500/20 flex items-center justify-center">
-                  <UserIconLucide className="w-3 h-3 sm:w-4 sm:h-4 text-orange-400" />
+              <div className="flex items-center gap-1.5 sm:gap-3 bg-white/5 pl-1 sm:pl-2 pr-2 sm:pr-4 py-0.5 sm:py-1.5 rounded-full border border-white/10 group">
+                <div className="w-5 h-5 sm:w-7 sm:h-7 rounded-full border border-white/20 bg-orange-500/20 flex items-center justify-center">
+                  <UserIconLucide className="w-2.5 h-2.5 sm:w-4 h-4 text-orange-400" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] sm:text-sm font-bold text-white/60 leading-none truncate max-w-[60px] sm:max-w-none">{user.displayName || user.email}</span>
+                  <span className="text-[8px] sm:text-sm font-bold text-white/60 leading-none truncate max-w-[40px] sm:max-w-none">{user.displayName || user.email}</span>
                   <button 
                     onClick={() => logout()}
-                    className="text-[8px] sm:text-sm text-white/30 uppercase tracking-widest hover:text-red-400 transition-colors text-left"
+                    className="text-[7px] sm:text-sm text-white/30 uppercase tracking-widest hover:text-red-400 transition-colors text-left"
                   >
                     {t.logout}
                   </button>
@@ -985,10 +985,10 @@ const App: React.FC = () => {
                   setAuthMode('login');
                   setShowAuthModal(true);
                 }}
-                className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all group"
+                className="flex items-center gap-1 sm:gap-2 px-1.5 sm:px-4 py-1 sm:py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-all group"
               >
-                <LogIn className="w-3 h-3 sm:w-4 sm:h-4 text-white/60 group-hover:text-white" />
-                <span className="text-[10px] sm:text-sm font-bold uppercase tracking-widest text-white/60 group-hover:text-white hidden xs:block">{t.loginSync}</span>
+                <LogIn className="w-2.5 h-2.5 sm:w-4 h-4 text-white/60 group-hover:text-white" />
+                <span className="text-[8px] sm:text-sm font-bold uppercase tracking-widest text-white/60 group-hover:text-white hidden xs:block">{t.loginSync}</span>
               </button>
             )}
           </div>
@@ -1016,7 +1016,7 @@ const App: React.FC = () => {
             className="flex flex-col items-center group transition-all relative"
           >
             <span className="text-[10px] sm:text-sm text-white/30 uppercase font-mono tracking-widest group-hover:text-orange-400 hidden sm:block">{t.learningProgress}</span>
-            <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-orange-400 mt-0.5 sm:mt-1 group-hover:scale-110 transition-transform" />
+            <BarChart3 className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-orange-400 mt-0.5 sm:mt-1 group-hover:scale-110 transition-transform" />
             {isSyncing && (
               <Cloud className="w-2 h-2 sm:w-3 sm:h-3 text-blue-400 absolute -top-1 -right-1 sm:-right-2 animate-bounce" />
             )}
@@ -1028,69 +1028,69 @@ const App: React.FC = () => {
             <span className="text-[10px] sm:text-sm text-white/30 uppercase font-mono tracking-widest">{t.totalMastery}</span>
             <span className="text-lg sm:text-2xl font-mono text-orange-400 tabular-nums">{score.toString().padStart(4, '0')}</span>
           </div>
-          <div className="h-6 sm:h-8 w-px bg-white/10 hidden xs:block" />
-          <div className="flex items-center gap-1.5 sm:gap-3 bg-white/5 px-2 sm:px-4 py-1 sm:py-2 rounded-full border border-white/10">
+          <div className="h-4 sm:h-8 w-px bg-white/10 hidden xs:block" />
+          <div className="flex items-center gap-1 sm:gap-3 bg-white/5 px-1.5 sm:px-4 py-0.5 sm:py-2 rounded-full border border-white/10">
             <Target className="w-3 h-3 sm:w-4 sm:h-4 text-blue-400" />
-            <span className="text-[10px] sm:text-sm font-bold uppercase tracking-wider text-blue-400">
+            <span className="text-[8px] sm:text-sm font-bold uppercase tracking-wider text-blue-400">
               {mode === 'mySgf' ? '1/1' : `${currentProblemIndex + 1}/${filteredProblems.length}`}
             </span>
           </div>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto p-4 sm:p-8 lg:p-12 flex flex-col gap-8">
+      <main className="max-w-4xl mx-auto p-2 sm:p-8 lg:p-12 flex flex-col gap-4 sm:gap-8">
         {/* Main Content: Filters & Board */}
-        <div className="w-full flex flex-col items-center justify-start gap-8">
+        <div className="w-full flex flex-col items-center justify-start gap-4 sm:gap-8">
           {/* Filters */}
-          <div className="w-full flex flex-col gap-4 bg-white/5 p-4 rounded-3xl border border-white/10 backdrop-blur-md">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.mode}</label>
-                <div className="flex gap-2">
+          <div className="w-full flex flex-col gap-3 sm:gap-4 bg-white/5 p-3 sm:p-4 rounded-3xl border border-white/10 backdrop-blur-md">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+              <div className="space-y-1 sm:space-y-2">
+                <label className="text-[10px] sm:text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.mode}</label>
+                <div className="flex gap-1 sm:gap-2">
                   <button
                     onClick={() => setMode('training')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold uppercase tracking-widest transition-all ${
+                    className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-sm font-bold uppercase tracking-widest transition-all ${
                       mode === 'training' 
                         ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' 
                         : 'bg-white/5 text-white/40 hover:bg-white/10'
                     }`}
                   >
-                    <BookOpen className="w-4 h-4" />
+                    <BookOpen className="w-3 h-3 sm:w-4 h-4" />
                     {t.training}
                   </button>
                   <button
                     onClick={() => setMode('review')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold uppercase tracking-widest transition-all ${
+                    className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-sm font-bold uppercase tracking-widest transition-all ${
                       mode === 'review' 
                         ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20' 
                         : 'bg-white/5 text-white/40 hover:bg-white/10'
                     }`}
                   >
-                    <Calendar className="w-4 h-4" />
+                    <Calendar className="w-3 h-3 sm:w-4 h-4" />
                     {t.review}
                     {Object.values(srsData).filter(s => s.nextReviewDate <= Date.now()).length > 0 && (
-                      <span className="ml-1 px-1.5 py-0.5 rounded-full bg-white/20 text-[10px]">
+                      <span className="ml-1 px-1 py-0.5 rounded-full bg-white/20 text-[8px] sm:text-[10px]">
                         {Object.values(srsData).filter(s => s.nextReviewDate <= Date.now()).length}
                       </span>
                     )}
                   </button>
                   <button
                     onClick={() => setMode('mySgf')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold uppercase tracking-widest transition-all ${
+                    className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-sm font-bold uppercase tracking-widest transition-all ${
                       mode === 'mySgf' 
                         ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' 
                         : 'bg-white/5 text-white/40 hover:bg-white/10'
                     }`}
                   >
-                    <FileText className="w-4 h-4" />
+                    <FileText className="w-3 h-3 sm:w-4 h-4" />
                     {t.mySgf}
                   </button>
                 </div>
               </div>
               
-              <div className="space-y-2">
-                <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.boardSize}</label>
-                <div className="flex gap-2">
+              <div className="space-y-1 sm:space-y-2">
+                <label className="text-[10px] sm:text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.boardSize}</label>
+                <div className="flex gap-1 sm:gap-2">
                   {[9, 13, 19].map(size => (
                     <button
                       key={size}
@@ -1100,7 +1100,7 @@ const App: React.FC = () => {
                         setCurrentProblemIndex(0);
                         setRefreshKey(prev => prev + 1);
                       }}
-                      className={`px-4 py-2 rounded-xl text-sm font-bold uppercase tracking-widest transition-all ${
+                      className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-sm font-bold uppercase tracking-widest transition-all ${
                         selectedBoardSize === size 
                           ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' 
                           : 'bg-white/5 text-white/40 hover:bg-white/10'
@@ -1114,9 +1114,9 @@ const App: React.FC = () => {
             </div>
 
             {mode === 'training' && (
-              <div className="space-y-2">
-                <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.difficulty}</label>
-                <div className="flex flex-wrap gap-2">
+              <div className="space-y-1 sm:space-y-2">
+                <label className="text-[10px] sm:text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.difficulty}</label>
+                <div className="flex flex-wrap gap-1 sm:gap-2">
                   {LEVELS.map(l => (
                     <button
                       key={l.id}
@@ -1125,7 +1125,7 @@ const App: React.FC = () => {
                         setCurrentProblemIndex(0);
                         setRefreshKey(prev => prev + 1);
                       }}
-                      className={`px-3 py-1.5 rounded-xl text-sm font-bold uppercase tracking-widest transition-all ${
+                      className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[10px] sm:text-sm font-bold uppercase tracking-widest transition-all ${
                         selectedLevel === l.id 
                           ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' 
                           : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white'
@@ -1139,10 +1139,10 @@ const App: React.FC = () => {
             )}
 
             {mode === 'mySgf' && (
-              <div className="mt-4 p-4 bg-white/5 rounded-2xl border border-white/10 space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="mt-2 sm:mt-4 p-2 sm:p-4 bg-white/5 rounded-2xl border border-white/10 space-y-2 sm:space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                   <div className="flex-1">
-                    <label className="block text-sm font-mono text-white/30 uppercase tracking-widest mb-2">
+                    <label className="block text-[10px] sm:text-sm font-mono text-white/30 uppercase tracking-widest mb-1 sm:mb-2">
                       {t.uploadSgf}
                     </label>
                     <div className="flex items-center gap-2">
@@ -1551,30 +1551,30 @@ const App: React.FC = () => {
         </div>
 
           {/* Controls */}
-          <div className="flex flex-col items-center gap-6 w-full">
+          <div className="flex flex-col items-center gap-3 sm:gap-6 w-full">
             {/* Quick Actions during Memorization */}
             {status === 'memorizing' && (
               <motion.div 
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-4"
+                className="flex items-center gap-2 sm:gap-4"
               >
                 <button
                   onClick={startRecallNow}
-                  className="px-8 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition-all active:scale-95 border border-white/10 flex items-center gap-2"
+                  className="px-4 sm:px-8 py-2 sm:py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm transition-all active:scale-95 border border-white/10 flex items-center gap-2"
                 >
-                  <Target className="w-4 h-4 text-orange-400" />
+                  <Target className="w-3 h-3 sm:w-4 h-4 text-orange-400" />
                   <span>{t.startRecallNow}</span>
                 </button>
                 
                 <button
                   onClick={toggleZoom}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-2xl transition-all border border-white/10 ${
+                  className={`flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 rounded-2xl transition-all border border-white/10 ${
                     isZoomed ? 'bg-orange-500 text-black font-bold' : 'bg-white/5 text-white/40 hover:text-orange-400'
                   }`}
                 >
-                  <Eye className="w-4 h-4" />
-                  <span className="text-sm uppercase tracking-widest">{t.magnify}</span>
+                  <Eye className="w-3 h-3 sm:w-4 h-4" />
+                  <span className="text-xs sm:text-sm uppercase tracking-widest">{t.magnify}</span>
                 </button>
               </motion.div>
             )}
@@ -1584,41 +1584,41 @@ const App: React.FC = () => {
               <motion.div 
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col items-center gap-4"
+                className="flex flex-col items-center gap-3 sm:gap-4"
               >
-                <div className="flex items-center gap-2 bg-white/5 p-2 rounded-2xl border border-white/10 backdrop-blur-md">
+                <div className="flex items-center gap-1 sm:gap-2 bg-white/5 p-1 sm:p-2 rounded-2xl border border-white/10 backdrop-blur-md">
                   {/* Next Move Indicator */}
-                  <div className="flex items-center gap-3 px-4 py-2 bg-white/10 rounded-xl border border-white/10">
-                    <div className="text-[10px] uppercase tracking-tighter text-white/40 font-mono">Next</div>
-                    <div className="flex items-center gap-2">
-                      <div className={`w-4 h-4 rounded-full border border-white/20 ${userStones.length % 2 === 0 ? 'bg-black' : 'bg-white'}`} />
-                      <span className="text-sm font-mono font-bold text-orange-400">#{userStones.length + 1}</span>
+                  <div className="flex items-center gap-2 sm:gap-3 px-2 sm:px-4 py-1.5 sm:py-2 bg-white/10 rounded-xl border border-white/10">
+                    <div className="text-[8px] sm:text-[10px] uppercase tracking-tighter text-white/40 font-mono">Next</div>
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <div className={`w-3 h-3 sm:w-4 h-4 rounded-full border border-white/20 ${userStones.length % 2 === 0 ? 'bg-black' : 'bg-white'}`} />
+                      <span className="text-xs sm:text-sm font-mono font-bold text-orange-400">#{userStones.length + 1}</span>
                     </div>
                   </div>
 
-                  <div className="w-px h-4 bg-white/10 mx-1" />
+                  <div className="w-px h-3 sm:h-4 bg-white/10 mx-0.5 sm:mx-1" />
 
                   <button
                     onClick={() => {
                       setSelectedTool(selectedTool === 'eraser' ? 'black' : 'eraser');
                       setPreviewStone(null);
                     }}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+                    className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all ${
                       selectedTool === 'eraser' ? 'bg-red-500 text-white font-bold' : 'text-white/40 hover:text-red-400'
                     }`}
                   >
-                    <Eraser className="w-4 h-4" />
-                    <span className="text-sm uppercase tracking-widest">{t.eraser}</span>
+                    <Eraser className="w-3 h-3 sm:w-4 h-4" />
+                    <span className="text-xs sm:text-sm uppercase tracking-widest">{t.eraser}</span>
                   </button>
-                  <div className="w-px h-4 bg-white/10 mx-1" />
+                  <div className="w-px h-3 sm:h-4 bg-white/10 mx-0.5 sm:mx-1" />
                   <button
                     onClick={toggleZoom}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+                    className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all ${
                       isZoomed ? 'bg-orange-500 text-black font-bold' : 'text-white/40 hover:text-orange-400'
                     }`}
                   >
-                    <Eye className="w-4 h-4" />
-                    <span className="text-sm uppercase tracking-widest">{t.magnify}</span>
+                    <Eye className="w-3 h-3 sm:w-4 h-4" />
+                    <span className="text-xs sm:text-sm uppercase tracking-widest">{t.magnify}</span>
                   </button>
                 </div>
 
@@ -1626,21 +1626,21 @@ const App: React.FC = () => {
                   <motion.div 
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="flex items-center gap-3"
+                    className="flex items-center gap-2 sm:gap-3"
                   >
                     <button
                       onClick={confirmMove}
-                      className="flex items-center gap-2 px-6 py-2 rounded-xl bg-emerald-500 text-black font-bold shadow-lg shadow-emerald-500/20 active:scale-95"
+                      className="flex items-center gap-1 sm:gap-2 px-3 sm:px-6 py-1 sm:py-2 rounded-xl bg-emerald-500 text-black font-bold shadow-lg shadow-emerald-500/20 active:scale-95 text-[10px] sm:text-sm"
                     >
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span className="text-sm uppercase tracking-widest">{t.confirmMoveBtn}</span>
+                      <CheckCircle2 className="w-2.5 h-2.5 sm:w-4 h-4" />
+                      <span className="uppercase tracking-widest">{t.confirmMoveBtn}</span>
                     </button>
                     <button
                       onClick={cancelMove}
-                      className="flex items-center gap-2 px-6 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/10 active:scale-95"
+                      className="flex items-center gap-1 sm:gap-2 px-3 sm:px-6 py-1 sm:py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/10 active:scale-95 text-[10px] sm:text-sm"
                     >
-                      <XCircle className="w-4 h-4" />
-                      <span className="text-sm uppercase tracking-widest">{t.cancelMoveBtn}</span>
+                      <XCircle className="w-2.5 h-2.5 sm:w-4 h-4" />
+                      <span className="uppercase tracking-widest">{t.cancelMoveBtn}</span>
                     </button>
                   </motion.div>
                 )}
@@ -1648,87 +1648,87 @@ const App: React.FC = () => {
                 {selectedLevel !== '極限' && !peekUsed && (
                   <button
                     onClick={peekProblem}
-                    className="flex items-center gap-2 px-6 py-2 rounded-full bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 border border-orange-500/30 transition-all active:scale-95 group"
+                    className="flex items-center gap-1 sm:gap-2 px-4 sm:px-6 py-1.5 sm:py-2 rounded-full bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 border border-orange-500/30 transition-all active:scale-95 group"
                   >
-                    <Brain className="w-4 h-4 group-hover:animate-pulse" />
-                    <span className="text-sm font-bold uppercase tracking-widest">{t.peek}</span>
+                    <Brain className="w-3 h-3 sm:w-4 h-4 group-hover:animate-pulse" />
+                    <span className="text-xs sm:text-sm font-bold uppercase tracking-widest">{t.peek}</span>
                   </button>
                 )}
               </motion.div>
             )}
 
-            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 bg-white/5 p-2 rounded-2xl border border-white/10 backdrop-blur-md w-full sm:w-auto">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-1 sm:gap-4 bg-white/5 p-1 sm:p-2 rounded-2xl border border-white/10 backdrop-blur-md w-full sm:w-auto">
+              <div className="flex items-center gap-1 sm:gap-2">
                 <button 
                   onClick={prevProblem}
-                  className="p-3 sm:p-4 rounded-xl hover:bg-white/10 text-white/60 hover:text-white transition-all active:scale-95"
+                  className="p-2 sm:p-4 rounded-xl hover:bg-white/10 text-white/60 hover:text-white transition-all active:scale-95"
                   title="上一題"
                 >
-                  <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <ChevronLeft className="w-4 h-4 sm:w-6 sm:h-6" />
                 </button>
-                <div className="h-6 sm:h-8 w-px bg-white/10" />
+                <div className="h-4 sm:h-8 w-px bg-white/10" />
                 <button 
                   onClick={resetProblem}
-                  className="px-4 sm:px-8 py-3 sm:py-4 rounded-xl hover:bg-white/10 flex items-center gap-2 sm:gap-3 transition-all active:scale-95 group"
+                  className="px-2 sm:px-8 py-2 sm:py-4 rounded-xl hover:bg-white/10 flex items-center gap-1 sm:gap-3 transition-all active:scale-95 group"
                 >
-                  <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500 group-hover:rotate-[-180deg] transition-transform duration-500" />
-                  <span className="font-bold uppercase tracking-widest text-xs sm:text-sm">{t.reset}</span>
+                  <RotateCcw className="w-3 h-3 sm:w-5 sm:h-5 text-orange-500 group-hover:rotate-[-180deg] transition-transform duration-500" />
+                  <span className="font-bold uppercase tracking-widest text-[10px] sm:text-sm">{t.reset}</span>
                 </button>
               </div>
               
-              <div className="h-6 sm:h-8 w-px bg-white/10 hidden sm:block" />
+              <div className="h-4 sm:h-8 w-px bg-white/10 hidden sm:block" />
               
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 sm:gap-2">
                 {status === 'idle' ? (
                   <button 
                     onClick={startTraining}
                     disabled={mode === 'mySgf' && !customProblem}
-                    className={`px-6 sm:px-8 py-3 sm:py-4 rounded-xl flex items-center gap-2 sm:gap-3 transition-all active:scale-95 group shadow-lg ${
+                    className={`px-3 sm:px-8 py-2 sm:py-4 rounded-xl flex items-center gap-1 sm:gap-3 transition-all active:scale-95 group shadow-lg ${
                       (mode === 'mySgf' && !customProblem)
                         ? 'bg-white/5 text-white/20 cursor-not-allowed'
                         : 'bg-orange-500 hover:bg-orange-400 text-black shadow-orange-500/20'
                     }`}
                   >
-                    <Brain className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform" />
-                    <span className="font-bold uppercase tracking-widest text-xs sm:text-sm">{t.startTraining}</span>
+                    <Brain className="w-3 h-3 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform" />
+                    <span className="font-bold uppercase tracking-widest text-[10px] sm:text-sm">{t.startTraining}</span>
                   </button>
                 ) : (status === 'placing' && attempts > 0) ? (
                   <button 
                     onClick={checkAnswer}
-                    className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-blue-500 hover:bg-blue-400 text-white flex items-center gap-2 sm:gap-3 transition-all active:scale-95 group shadow-lg shadow-blue-500/20"
+                    className="px-3 sm:px-8 py-2 sm:py-4 rounded-xl bg-blue-500 hover:bg-blue-400 text-white flex items-center gap-1 sm:gap-3 transition-all active:scale-95 group shadow-lg shadow-blue-500/20"
                   >
-                    <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform" />
-                    <span className="font-bold uppercase tracking-widest text-xs sm:text-sm">{t.checkAnswer}</span>
+                    <CheckCircle2 className="w-3 h-3 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform" />
+                    <span className="font-bold uppercase tracking-widest text-[10px] sm:text-sm">{t.checkAnswer}</span>
                   </button>
                 ) : status === 'result' ? (
-                  <div className="px-6 sm:px-8 py-3 sm:py-4 flex items-center gap-2 sm:gap-3 text-white/40">
-                    <Target className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span className="font-bold uppercase tracking-widest text-xs sm:text-sm">{t.learningProgress}</span>
+                  <div className="px-3 sm:px-8 py-2 sm:py-4 flex items-center gap-1 sm:gap-3 text-white/40">
+                    <Target className="w-3 h-3 sm:w-5 sm:h-5" />
+                    <span className="font-bold uppercase tracking-widest text-[10px] sm:text-sm">{t.learningProgress}</span>
                   </div>
                 ) : (
-                  <div className="px-6 sm:px-8 py-3 sm:py-4 flex items-center gap-2 sm:gap-3 text-white/20">
-                    <Brain className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span className="font-bold uppercase tracking-widest text-xs sm:text-sm">{t.inProgress}...</span>
+                  <div className="px-3 sm:px-8 py-2 sm:py-4 flex items-center gap-1 sm:gap-3 text-white/20">
+                    <Brain className="w-3 h-3 sm:w-5 sm:h-5" />
+                    <span className="font-bold uppercase tracking-widest text-[10px] sm:text-sm">{t.inProgress}...</span>
                   </div>
                 )}
-                <div className="h-6 sm:h-8 w-px bg-white/10" />
+                <div className="h-4 sm:h-8 w-px bg-white/10" />
                 <button 
                   onClick={nextProblem}
-                  className="p-3 sm:p-4 rounded-xl hover:bg-white/10 text-white/60 hover:text-white transition-all active:scale-95"
+                  className="p-2 sm:p-4 rounded-xl hover:bg-white/10 text-white/60 hover:text-white transition-all active:scale-95"
                   title="下一題"
                 >
-                  <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <ChevronRight className="w-4 h-4 sm:w-6 sm:h-6" />
                 </button>
               </div>
             </div>
 
             {/* Next Problem Button after Completion */}
             {(status === 'correct' || status === 'result' || attempts === 0 || showExplanation) && (
-              <div className="flex flex-col items-center gap-4 w-full max-w-xs">
+              <div className="flex flex-col items-center gap-2 sm:gap-4 w-full max-w-xs">
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`w-full py-3 rounded-xl border flex items-center justify-center gap-3 font-black uppercase tracking-widest ${
+                  className={`w-full py-2 sm:py-3 rounded-xl border flex items-center justify-center gap-2 sm:gap-3 font-black uppercase tracking-widest text-xs sm:text-base ${
                     (status === 'correct' || (status === 'result' && hasWonCurrent))
                       ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' 
                       : 'bg-red-500/10 border-red-500/30 text-red-500'
@@ -1736,12 +1736,12 @@ const App: React.FC = () => {
                 >
                   {(status === 'correct' || (status === 'result' && hasWonCurrent)) ? (
                     <>
-                      <CheckCircle2 className="w-5 h-5" />
+                      <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
                       <span>{t.correct}</span>
                     </>
                   ) : (
                     <>
-                      <XCircle className="w-5 h-5" />
+                      <XCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                       <span>{attempts === 0 ? t.gameOver : t.wrong}</span>
                     </>
                   )}
@@ -1752,9 +1752,9 @@ const App: React.FC = () => {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     onClick={handleExit}
-                    className="w-full py-6 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-black text-xl transition-all active:scale-[0.98] flex items-center justify-center gap-3"
+                    className="w-full py-3 sm:py-6 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-black text-sm sm:text-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 sm:gap-3"
                   >
-                    <Home className="w-6 h-6" />
+                    <Home className="w-4 h-4 sm:w-6 sm:h-6" />
                     <span>{t.backToHome}</span>
                   </motion.button>
                 ) : (
@@ -1762,10 +1762,10 @@ const App: React.FC = () => {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     onClick={nextProblem}
-                    className="w-full py-6 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-black font-black text-xl transition-all shadow-xl shadow-orange-500/20 active:scale-[0.98] flex items-center justify-center gap-3"
+                    className="w-full py-3 sm:py-6 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-black font-black text-sm sm:text-xl transition-all shadow-xl shadow-orange-500/20 active:scale-[0.98] flex items-center justify-center gap-2 sm:gap-3"
                   >
                     <span>{t.nextProblem}</span>
-                    <ChevronRight className="w-6 h-6" />
+                    <ChevronRight className="w-4 h-4 sm:w-6 sm:h-6" />
                   </motion.button>
                 )}
               </div>
@@ -1803,42 +1803,42 @@ const App: React.FC = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-2xl bg-[#1a1a1a] border border-white/10 rounded-[2rem] sm:rounded-[2.5rem] p-4 sm:p-8 shadow-2xl overflow-y-auto max-h-[90vh]"
+              className="relative w-full max-w-2xl bg-[#1a1a1a] border border-white/10 rounded-[2rem] sm:rounded-[2.5rem] p-3 sm:p-8 shadow-2xl overflow-y-auto max-h-[90vh]"
             >
-              <div className="flex justify-between items-center mb-6 sm:mb-8">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <div className="bg-orange-500/20 p-1.5 sm:p-2 rounded-xl">
-                    <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-orange-500" />
+              <div className="flex justify-between items-center mb-2 sm:mb-8">
+                <div className="flex items-center gap-1.5 sm:gap-3">
+                  <div className="bg-orange-500/20 p-1 sm:p-2 rounded-xl">
+                    <BarChart3 className="w-3.5 h-3.5 sm:w-6 sm:h-6 text-orange-500" />
                   </div>
-                  <h2 className="text-xl sm:text-2xl font-bold">{t.statsTitle}</h2>
+                  <h2 className="text-base sm:text-2xl font-bold">{t.statsTitle}</h2>
                 </div>
                 <button 
                   onClick={() => setShowStats(false)}
-                  className="p-2 hover:bg-white/5 rounded-full transition-colors"
+                  className="p-1 sm:p-2 hover:bg-white/5 rounded-full transition-colors"
                 >
-                  <XCircle className="w-6 h-6 text-white/40" />
+                  <XCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white/40" />
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 gap-2 sm:gap-4">
                 {[...LEVELS.filter(l => l.id !== '全部'), { id: '我的棋譜', label: t.mySgf }].map(level => {
                   const s = stats[level.id] || { attempted: 0, correct: 0 };
                   const rate = s.attempted > 0 ? Math.round((s.correct / s.attempted) * 100) : 0;
                   
                   return (
-                    <div key={level.id} className="bg-white/5 p-6 rounded-3xl border border-white/5 flex items-center justify-between group hover:bg-white/10 transition-all">
+                    <div key={level.id} className="bg-white/5 p-2 sm:p-6 rounded-xl sm:rounded-3xl border border-white/5 flex items-center justify-between group hover:bg-white/10 transition-all">
                       <div className="flex flex-col">
-                        <span className="text-lg font-bold text-white/90">{level.label}</span>
-                        <div className="flex gap-4 mt-1">
-                          <span className="text-sm text-white/40 font-mono">{t.attempted}: <span className="text-white/80">{s.attempted}</span></span>
-                          <span className="text-sm text-white/40 font-mono">{t.correctCount}: <span className="text-emerald-400/80">{s.correct}</span></span>
+                        <span className="text-xs sm:text-lg font-bold text-white/90">{level.label}</span>
+                        <div className="flex gap-2 sm:gap-4 mt-0.5 sm:mt-1">
+                          <span className="text-[8px] sm:text-sm text-white/40 font-mono">{t.attempted}: <span className="text-white/80">{s.attempted}</span></span>
+                          <span className="text-[8px] sm:text-sm text-white/40 font-mono">{t.correctCount}: <span className="text-emerald-400/80">{s.correct}</span></span>
                         </div>
                       </div>
                       <div className="flex flex-col items-end">
-                        <span className="text-sm text-white/30 uppercase tracking-widest font-mono">{t.accuracy}</span>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-3xl font-black font-mono text-orange-400">{rate}</span>
-                          <span className="text-sm font-bold text-orange-400/60">%</span>
+                        <span className="text-[8px] sm:text-sm text-white/30 uppercase tracking-widest font-mono">{t.accuracy}</span>
+                        <div className="flex items-baseline gap-0.5 sm:gap-1">
+                          <span className="text-lg sm:text-3xl font-black font-mono text-orange-400">{rate}</span>
+                          <span className="text-[8px] sm:text-sm font-bold text-orange-400/60">%</span>
                         </div>
                       </div>
                     </div>
@@ -1881,95 +1881,95 @@ const App: React.FC = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-md bg-[#1a1a1a] border border-white/10 rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl"
+              className="relative w-full max-w-md bg-[#1a1a1a] border border-white/10 rounded-[2rem] sm:rounded-[2.5rem] p-4 sm:p-8 shadow-2xl"
             >
-              <div className="flex justify-between items-center mb-6 sm:mb-8">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <div className="bg-orange-500/20 p-1.5 sm:p-2 rounded-xl">
-                    <LogIn className="w-5 h-5 sm:w-6 sm:h-6 text-orange-500" />
+              <div className="flex justify-between items-center mb-2 sm:mb-8">
+                <div className="flex items-center gap-1.5 sm:gap-3">
+                  <div className="bg-orange-500/20 p-1 sm:p-2 rounded-xl">
+                    <LogIn className="w-3.5 h-3.5 sm:w-6 sm:h-6 text-orange-500" />
                   </div>
-                  <h2 className="text-xl sm:text-2xl font-bold">{authMode === 'login' ? t.login : t.register}</h2>
+                  <h2 className="text-base sm:text-2xl font-bold">{authMode === 'login' ? t.login : t.register}</h2>
                 </div>
                 <button 
                   onClick={() => setShowAuthModal(false)}
-                  className="p-2 hover:bg-white/5 rounded-full transition-colors"
+                  className="p-1 sm:p-2 hover:bg-white/5 rounded-full transition-colors"
                 >
-                  <XCircle className="w-6 h-6 text-white/40" />
+                  <XCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white/40" />
                 </button>
               </div>
 
-              <form onSubmit={handleAuth} className="space-y-4">
+              <form onSubmit={handleAuth} className="space-y-3 sm:space-y-4">
                 {authMode === 'register' && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.username}</label>
+                  <div className="space-y-1 sm:space-y-2">
+                    <label className="text-[10px] sm:text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.username}</label>
                     <div className="relative">
-                      <UserIconLucide className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                      <UserIconLucide className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 h-4 text-white/20" />
                       <input 
                         type="text"
                         required
                         value={displayName}
                         onChange={(e) => setDisplayName(e.target.value)}
                         placeholder={t.usernamePlaceholder}
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-orange-500/50 transition-colors"
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-2 sm:py-3 pl-10 sm:pl-12 pr-4 text-xs sm:text-sm focus:outline-none focus:border-orange-500/50 transition-colors"
                       />
                     </div>
                   </div>
                 )}
-                <div className="space-y-2">
-                  <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.email}</label>
+                <div className="space-y-1 sm:space-y-2">
+                  <label className="text-[10px] sm:text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.email}</label>
                   <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 h-4 text-white/20" />
                     <input 
                       type="email"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="example@mail.com"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-orange-500/50 transition-colors"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-2 sm:py-3 pl-10 sm:pl-12 pr-4 text-xs sm:text-sm focus:outline-none focus:border-orange-500/50 transition-colors"
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.password}</label>
+                <div className="space-y-1 sm:space-y-2">
+                  <label className="text-[10px] sm:text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.password}</label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 h-4 text-white/20" />
                     <input 
                       type={showPassword ? 'text' : 'password'}
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-12 text-sm focus:outline-none focus:border-orange-500/50 transition-colors"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-2 sm:py-3 pl-10 sm:pl-12 pr-10 sm:pr-12 text-xs sm:text-sm focus:outline-none focus:border-orange-500/50 transition-colors"
                     />
                     <button 
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 hover:text-white transition-colors"
                     >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showPassword ? <EyeOff className="w-3.5 h-3.5 sm:w-4 h-4" /> : <Eye className="w-3.5 h-3.5 sm:w-4 h-4" />}
                     </button>
                   </div>
                 </div>
 
                 {authMode === 'register' && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.confirmPassword}</label>
+                  <div className="space-y-1 sm:space-y-2">
+                    <label className="text-[10px] sm:text-sm font-mono text-white/30 uppercase tracking-widest ml-2">{t.confirmPassword}</label>
                     <div className="relative">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 h-4 text-white/20" />
                       <input 
                         type={showPassword ? 'text' : 'password'}
                         required
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-12 text-sm focus:outline-none focus:border-orange-500/50 transition-colors"
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-2 sm:py-3 pl-10 sm:pl-12 pr-10 sm:pr-12 text-xs sm:text-sm focus:outline-none focus:border-orange-500/50 transition-colors"
                       />
                     </div>
                   </div>
                 )}
 
                 {authError && (
-                  <p className="text-sm text-red-400 bg-red-400/10 p-3 rounded-xl border border-red-400/20">
+                  <p className="text-[10px] sm:text-sm text-red-400 bg-red-400/10 p-2 sm:p-3 rounded-xl border border-red-400/20">
                     {authError}
                   </p>
                 )}
@@ -1977,10 +1977,10 @@ const App: React.FC = () => {
                 <button 
                   type="submit"
                   disabled={isAuthProcessing}
-                  className="w-full py-4 rounded-2xl bg-orange-500 hover:bg-orange-400 text-black font-bold text-sm transition-all shadow-lg shadow-orange-500/20 active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full py-3 sm:py-4 rounded-2xl bg-orange-500 hover:bg-orange-400 text-black font-bold text-xs sm:text-sm transition-all shadow-lg shadow-orange-500/20 active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {isAuthProcessing ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 sm:w-4 h-4 animate-spin" />
                   ) : (
                     authMode === 'login' ? t.loginBtn : t.registerBtn
                   )}
